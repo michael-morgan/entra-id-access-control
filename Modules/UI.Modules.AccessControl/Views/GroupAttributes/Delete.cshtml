@@ -1,0 +1,66 @@
+@model Api.Modules.AccessControl.Persistence.Entities.Authorization.GroupAttribute
+
+@{
+    ViewData["Title"] = "Delete Group Attributes";
+}
+
+<h2>Delete Group Attributes</h2>
+
+<h3>Are you sure you want to delete these group attributes?</h3>
+<div class="alert alert-warning">
+    <strong>Warning:</strong> This will permanently remove the group attributes. All members of this group will lose these ABAC attributes.
+</div>
+
+<div>
+    <h4>@Model.GroupName</h4>
+    <hr />
+    <dl class="row">
+        <dt class="col-sm-3">Group ID</dt>
+        <dd class="col-sm-9"><code>@Model.GroupId</code></dd>
+
+        <dt class="col-sm-3">Group Name</dt>
+        <dd class="col-sm-9">@Model.GroupName</dd>
+
+        <dt class="col-sm-3">Workstream ID</dt>
+        <dd class="col-sm-9">
+            @if (!string.IsNullOrEmpty(Model.WorkstreamId))
+            {
+                <span class="badge bg-primary">@Model.WorkstreamId</span>
+            }
+            else
+            {
+                <span class="text-muted">Not Set</span>
+            }
+        </dd>
+
+        <dt class="col-sm-3">Status</dt>
+        <dd class="col-sm-9">
+            @if (Model.IsActive)
+            {
+                <span class="badge bg-success">Active</span>
+            }
+            else
+            {
+                <span class="badge bg-secondary">Inactive</span>
+            }
+        </dd>
+
+        <dt class="col-sm-3">Attributes JSON</dt>
+        <dd class="col-sm-9">
+            @if (!string.IsNullOrEmpty(Model.AttributesJson))
+            {
+                <pre class="bg-light p-3 rounded"><code>@Model.AttributesJson</code></pre>
+            }
+            else
+            {
+                <span class="text-muted">No Attributes</span>
+            }
+        </dd>
+    </dl>
+
+    <form asp-action="Delete">
+        <input type="hidden" asp-for="Id" />
+        <button type="submit" class="btn btn-danger">Delete</button>
+        <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>

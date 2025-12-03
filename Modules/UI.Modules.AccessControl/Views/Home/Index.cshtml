@@ -1,0 +1,262 @@
+﻿@{
+    ViewData["Title"] = "Home";
+}
+
+<div class="jumbotron">
+    <h1 class="display-4">Access Control Admin Portal</h1>
+    <p class="lead">Manage authorization policies, user attributes, and view audit logs for the Access Control
+        Framework.</p>
+    <hr class="my-4">
+    <p>This admin portal provides comprehensive management capabilities for the enterprise authorization system.</p>
+</div>
+
+<h3 class="mt-4 mb-3">Core Authorization Management</h3>
+<div class="row">
+    <div class="col-md-4">
+        <div class="card mb-4 h-100">
+            <div class="card-body">
+                <h5 class="card-title">Policies</h5>
+                <p class="card-text">View, create, edit, and delete Casbin authorization policies. Manage role-based and
+                    attribute-based access control rules.</p>
+                <a asp-controller="Policies" asp-action="Index" class="btn btn-primary">Manage Policies</a>
+                <a asp-controller="Policies" asp-action="Create" class="btn btn-success ml-2">Create New</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card mb-4 h-100">
+            <div class="card-body">
+                <h5 class="card-title">Resources</h5>
+                <p class="card-text">Define and manage protected resources. Set resource patterns, display names, and descriptions for authorization policies.</p>
+                <a asp-controller="Resources" asp-action="Index" class="btn btn-primary">Manage Resources</a>
+                <a asp-controller="Resources" asp-action="Create" class="btn btn-success ml-2">Create New</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card mb-4 h-100">
+            <div class="card-body">
+                <h5 class="card-title">Roles</h5>
+                <p class="card-text">Create and manage application roles. Define role names, display names, and descriptions for role-based access control.</p>
+                <a asp-controller="Roles" asp-action="Index" class="btn btn-primary">Manage Roles</a>
+                <a asp-controller="Roles" asp-action="Create" class="btn btn-success ml-2">Create New</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h3 class="mt-4 mb-3">ABAC Attribute Management</h3>
+<div class="row">
+    <div class="col-md-3">
+        <div class="card mb-4 h-100">
+            <div class="card-body">
+                <h5 class="card-title">Attribute Schemas</h5>
+                <p class="card-text">Define custom attribute schemas for users, groups, and roles. Set data types and validation rules.</p>
+                <a asp-controller="AttributeSchemas" asp-action="Index" class="btn btn-primary btn-sm">Manage</a>
+                <a asp-controller="AttributeSchemas" asp-action="Create" class="btn btn-success btn-sm ml-1">Create</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card mb-4 h-100">
+            <div class="card-body">
+                <h5 class="card-title">User Attributes</h5>
+                <p class="card-text">Manage user-specific ABAC attributes. Set department, region, approval limits per user.</p>
+                <a asp-controller="UserAttributes" asp-action="Index" class="btn btn-primary btn-sm">Manage</a>
+                <a asp-controller="UserAttributes" asp-action="Create" class="btn btn-success btn-sm ml-1">Create</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card mb-4 h-100">
+            <div class="card-body">
+                <h5 class="card-title">Group Attributes</h5>
+                <p class="card-text">Manage group-level ABAC attributes. Set department, region, and business unit for groups.</p>
+                <a asp-controller="GroupAttributes" asp-action="Index" class="btn btn-primary btn-sm">Manage</a>
+                <a asp-controller="GroupAttributes" asp-action="Create" class="btn btn-success btn-sm ml-1">Create</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card mb-4 h-100">
+            <div class="card-body">
+                <h5 class="card-title">Role Attributes</h5>
+                <p class="card-text">Manage role-level ABAC attributes. Set management level, approval limits for roles.</p>
+                <a asp-controller="RoleAttributes" asp-action="Index" class="btn btn-primary btn-sm">Manage</a>
+                <a asp-controller="RoleAttributes" asp-action="Create" class="btn btn-success btn-sm ml-1">Create</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h3 class="mt-4 mb-3">ABAC Rules & Monitoring</h3>
+<div class="row">
+    <div class="col-md-4">
+        <div class="card mb-4 h-100">
+            <div class="card-body">
+                <h5 class="card-title">ABAC Rules</h5>
+                <p class="card-text">Manage individual ABAC rules for attribute-based authorization. Create standalone rules with multiple rule types.</p>
+                <a asp-controller="AbacRules" asp-action="Index" class="btn btn-primary">Manage Rules</a>
+                <a asp-controller="AbacRules" asp-action="Create" class="btn btn-success ml-2">Create New</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card mb-4 h-100">
+            <div class="card-body">
+                <h5 class="card-title">ABAC Rule Groups</h5>
+                <p class="card-text">Manage declarative rule groups. Define hierarchical rules with AND/OR logic for complex authorization.</p>
+                <a asp-controller="AbacRuleGroups" asp-action="Index" class="btn btn-primary">Manage Groups</a>
+                <a asp-controller="AbacRuleGroups" asp-action="Create" class="btn btn-success ml-2">Create New</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card mb-4 h-100">
+            <div class="card-body">
+                <h5 class="card-title">Events & Audit</h5>
+                <p class="card-text">View business events and technical audit logs. Track all system activities and authorization decisions.</p>
+                <a asp-controller="Events" asp-action="Index" class="btn btn-primary">Business Events</a>
+                <a asp-controller="Events" asp-action="Audit" class="btn btn-info ml-2">Audit Logs</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Quick Links</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <h6>Authorization Framework</h6>
+                        <ul>
+                            <li><a asp-controller="Policies" asp-action="Index">All Policies</a></li>
+                            <li><a asp-controller="Policies" asp-action="Index" asp-route-policyType="p">Permission Policies (p)</a></li>
+                            <li><a asp-controller="Policies" asp-action="Index" asp-route-policyType="g">Role Assignments (g)</a></li>
+                            <li><a asp-controller="Policies" asp-action="Index" asp-route-policyType="g2">Domain Roles (g2)</a></li>
+                            <li><a asp-controller="Resources" asp-action="Index">Resources</a></li>
+                            <li><a asp-controller="Roles" asp-action="Index">Roles</a></li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4">
+                        <h6>ABAC Attributes</h6>
+                        <ul>
+                            <li><a asp-controller="AttributeSchemas" asp-action="Index">Attribute Schemas</a></li>
+                            <li><a asp-controller="UserAttributes" asp-action="Index">User Attributes</a></li>
+                            <li><a asp-controller="GroupAttributes" asp-action="Index">Group Attributes</a></li>
+                            <li><a asp-controller="RoleAttributes" asp-action="Index">Role Attributes</a></li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4">
+                        <h6>ABAC Rules & Monitoring</h6>
+                        <ul>
+                            <li><a asp-controller="AbacRules" asp-action="Index">Individual ABAC Rules</a></li>
+                            <li><a asp-controller="AbacRuleGroups" asp-action="Index">ABAC Rule Groups</a></li>
+                            <li><a asp-controller="Events" asp-action="Index">Business Events</a></li>
+                            <li><a asp-controller="Events" asp-action="Audit">Audit Logs</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card border-primary">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Two-Layer Authorization Architecture</h5>
+            </div>
+            <div class="card-body">
+                <p class="lead">
+                    This system implements a <strong>two-layer authorization strategy</strong> for optimal performance and security.
+                </p>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card mb-3 border-success">
+                            <div class="card-header bg-success text-white">
+                                <strong>Layer 1: Controller Authorization (RBAC Only)</strong>
+                            </div>
+                            <div class="card-body">
+                                <p><span class="badge bg-success">Fast</span> <span class="badge bg-info">Casbin</span></p>
+                                <p><strong>Purpose:</strong> Quick role-based checks before business logic execution</p>
+                                <p><strong>Mechanism:</strong> Uses Casbin policies for RBAC validation</p>
+                                <p><strong>When:</strong> Executes at the controller level, before any data is loaded</p>
+                                <p><strong>Example:</strong> Checking if a user with role "Approver.Senior" can access the "Approve" action</p>
+                                <ul class="mb-0">
+                                    <li>Validates: Role membership and basic permissions</li>
+                                    <li>Does NOT validate: Business attributes, entity-specific rules</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="card mb-3 border-warning">
+                            <div class="card-header bg-warning text-dark">
+                                <strong>Layer 2: Service Authorization (RBAC + ABAC)</strong>
+                            </div>
+                            <div class="card-body">
+                                <p><span class="badge bg-warning text-dark">Comprehensive</span> <span class="badge bg-info">Casbin + Custom</span></p>
+                                <p><strong>Purpose:</strong> Full authorization with business rules and entity data</p>
+                                <p><strong>Mechanism:</strong> Combines Casbin RBAC + custom ABAC evaluators</p>
+                                <p><strong>When:</strong> Executes in the service layer with full entity context</p>
+                                <p><strong>Example:</strong> Checking if a user can approve a specific claim based on their approval limit and the claim amount</p>
+                                <ul class="mb-0">
+                                    <li>Validates: Role membership, user/group/role attributes, entity properties</li>
+                                    <li>Evaluates: Complex business rules (e.g., approval limits, regional restrictions)</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-info mt-3 mb-0">
+                    <h6><strong>Why Two Layers?</strong></h6>
+                    <p class="mb-2">
+                        <strong>Performance:</strong> Layer 1 rejects unauthorized requests quickly without database queries.
+                    </p>
+                    <p class="mb-2">
+                        <strong>Flexibility:</strong> Layer 2 evaluates complex business rules with full entity context.
+                    </p>
+                    <p class="mb-0">
+                        <strong>Security:</strong> Multiple checkpoints ensure defense-in-depth authorization.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="alert alert-info">
+            <h6>About This System</h6>
+            <p>
+                This Access Control Framework uses Casbin for authorization management, combining Role-Based Access
+                Control (RBAC)
+                and Attribute-Based Access Control (ABAC). All policy changes and data modifications are tracked through
+                business
+                events and technical audit logs for compliance.
+            </p>
+            <p class="mb-0">
+                <strong>Key Features:</strong> Multi-tenancy support via workstreams, Azure Entra ID integration,
+                correlation tracking, business process workflows, and comprehensive audit trails.
+            </p>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,145 @@
+@model UI.Modules.AccessControl.Models.AbacRuleViewModel
+
+@{
+    ViewData["Title"] = "Edit ABAC Rule";
+}
+
+<div class="row mb-3">
+    <div class="col-md-12">
+        <h2>@ViewData["Title"]</h2>
+        <p class="lead">Edit an existing ABAC rule.</p>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-12">
+        <div class="alert alert-info">
+            <strong>Workstream:</strong> @ViewBag.SelectedWorkstream
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <form asp-action="Edit" method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="WorkstreamId" />
+
+            <div class="card">
+                <div class="card-header">
+                    <h4>Rule Information</h4>
+                </div>
+                <div class="card-body">
+                    <div class="form-group mb-3">
+                        <label asp-for="RuleName" class="control-label"></label>
+                        <input asp-for="RuleName" class="form-control" />
+                        <span asp-validation-for="RuleName" class="text-danger"></span>
+                        <small class="form-text text-muted">A descriptive name for this rule</small>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="RuleType" class="control-label"></label>
+                        <select asp-for="RuleType" class="form-control" id="RuleType">
+                            <option value="">-- Select Rule Type --</option>
+                            <option value="AttributeComparison">Attribute Comparison</option>
+                            <option value="PropertyMatch">Property Match</option>
+                            <option value="ValueRange">Value Range</option>
+                            <option value="TimeRestriction">Time Restriction</option>
+                            <option value="LocationRestriction">Location Restriction</option>
+                            <option value="AttributeValue">Attribute Value</option>
+                        </select>
+                        <span asp-validation-for="RuleType" class="text-danger"></span>
+                        <small class="form-text text-muted">The type of authorization rule to apply</small>
+                    </div>
+
+                    <!-- Dynamic Form Builder Container -->
+                    <div id="dynamicFormContainer" class="mb-3"></div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="RuleGroupId" class="control-label"></label>
+                        <select asp-for="RuleGroupId" class="form-control" asp-items="ViewBag.RuleGroups">
+                            <option value="">Standalone (not in a group)</option>
+                        </select>
+                        <span asp-validation-for="RuleGroupId" class="text-danger"></span>
+                        <small class="form-text text-muted">Optional: Assign this rule to a rule group</small>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="Priority" class="control-label"></label>
+                        <input asp-for="Priority" class="form-control" type="number" />
+                        <span asp-validation-for="Priority" class="text-danger"></span>
+                        <small class="form-text text-muted">Lower numbers have higher priority (0 = highest priority)</small>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="Configuration" class="control-label"></label>
+                        <textarea asp-for="Configuration" class="form-control" rows="10" id="Configuration" readonly></textarea>
+                        <span asp-validation-for="Configuration" class="text-danger"></span>
+                        <small class="form-text text-muted">Auto-generated JSON configuration (use the form builder above)</small>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="FailureMessage" class="control-label"></label>
+                        <input asp-for="FailureMessage" class="form-control" />
+                        <span asp-validation-for="FailureMessage" class="text-danger"></span>
+                        <small class="form-text text-muted">Optional: Message to display when authorization fails</small>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input asp-for="IsActive" class="form-check-input" type="checkbox" />
+                        <label asp-for="IsActive" class="form-check-label"></label>
+                        <span asp-validation-for="IsActive" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            @if (Model.CreatedAt.HasValue || !string.IsNullOrWhiteSpace(Model.CreatedBy))
+            {
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5>Audit Information</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (Model.CreatedAt.HasValue)
+                        {
+                            <p><strong>Created:</strong> @Model.CreatedAt.Value.ToString("yyyy-MM-dd HH:mm:ss")</p>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Model.CreatedBy))
+                        {
+                            <p><strong>Created By:</strong> @Model.CreatedBy</p>
+                        }
+                        @if (Model.ModifiedAt.HasValue)
+                        {
+                            <p><strong>Last Modified:</strong> @Model.ModifiedAt.Value.ToString("yyyy-MM-dd HH:mm:ss")</p>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Model.ModifiedBy))
+                        {
+                            <p><strong>Modified By:</strong> @Model.ModifiedBy</p>
+                        }
+                    </div>
+                </div>
+            }
+
+            <div class="form-group mt-3">
+                <input type="submit" value="Save" class="btn btn-primary" />
+                <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-info">View Details</a>
+                <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script src="~/js/abac-rule-builder.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            const workstreamId = '@ViewBag.SelectedWorkstream';
+            const builder = new AbacRuleBuilder(workstreamId, 'RuleType', 'Configuration', 'dynamicFormContainer');
+
+            // Wait for initialization to complete (schemas load and form renders if config exists)
+            await builder.init();
+        });
+    </script>
+}

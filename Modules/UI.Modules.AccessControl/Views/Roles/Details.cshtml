@@ -1,0 +1,166 @@
+@model UI.Modules.AccessControl.Models.RoleViewModel
+
+@{
+    ViewData["Title"] = "Role Details";
+}
+
+<h1>Role Details</h1>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">@Model.DisplayName</h4>
+                    <div>
+                        @if (Model.IsSystemRole)
+                        {
+                            <span class="badge bg-info">System Role</span>
+                        }
+                        @if (Model.IsActive)
+                        {
+                            <span class="badge bg-success">Active</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">Inactive</span>
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-3">Role Name</dt>
+                    <dd class="col-sm-9"><code>@Model.RoleName</code></dd>
+
+                    <dt class="col-sm-3">Display Name</dt>
+                    <dd class="col-sm-9">@Model.DisplayName</dd>
+
+                    <dt class="col-sm-3">Workstream</dt>
+                    <dd class="col-sm-9">
+                        @if (Model.WorkstreamId == "*")
+                        {
+                            <span class="badge bg-warning">Global</span>
+                        }
+                        else
+                        {
+                            <code>@Model.WorkstreamId</code>
+                        }
+                    </dd>
+
+                    <dt class="col-sm-3">Description</dt>
+                    <dd class="col-sm-9">
+                        @if (!string.IsNullOrWhiteSpace(Model.Description))
+                        {
+                            @Model.Description
+                        }
+                        else
+                        {
+                            <em class="text-muted">No description provided</em>
+                        }
+                    </dd>
+
+                    <dt class="col-sm-3">System Role</dt>
+                    <dd class="col-sm-9">
+                        @if (Model.IsSystemRole)
+                        {
+                            <span class="badge bg-info">Yes</span>
+                            <small class="text-muted d-block">This role cannot be deleted</small>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">No</span>
+                        }
+                    </dd>
+
+                    <dt class="col-sm-3">Status</dt>
+                    <dd class="col-sm-9">
+                        @if (Model.IsActive)
+                        {
+                            <span class="badge bg-success">Active</span>
+                            <small class="text-muted d-block">This role is used in authorization checks</small>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">Inactive</span>
+                            <small class="text-muted d-block">This role is not used in authorization checks</small>
+                        }
+                    </dd>
+                </dl>
+            </div>
+        </div>
+
+        @if (Model.CreatedAt.HasValue || Model.ModifiedAt.HasValue)
+        {
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5>Audit Information</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        @if (Model.CreatedAt.HasValue)
+                        {
+                            <dt class="col-sm-3">Created</dt>
+                            <dd class="col-sm-9">
+                                @Model.CreatedAt.Value.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss")
+                                <small class="text-muted d-block">by @(Model.CreatedBy ?? "Unknown")</small>
+                            </dd>
+                        }
+
+                        @if (Model.ModifiedAt.HasValue)
+                        {
+                            <dt class="col-sm-3">Last Modified</dt>
+                            <dd class="col-sm-9">
+                                @Model.ModifiedAt.Value.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss")
+                                <small class="text-muted d-block">by @(Model.ModifiedBy ?? "Unknown")</small>
+                            </dd>
+                        }
+                    </dl>
+                </div>
+            </div>
+        }
+
+        <div class="mt-3">
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-warning">Edit</a>
+            @if (!Model.IsSystemRole)
+            {
+                <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-danger">Delete</a>
+            }
+            <a asp-action="Index" class="btn btn-secondary">Back to List</a>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>Related Information</h5>
+            </div>
+            <div class="card-body">
+                <h6>Policies Using This Role:</h6>
+                <p class="small">
+                    This role may be used in policies as a subject (V0) or as a parent role in role inheritance (V1 in 'g' policies).
+                </p>
+                <a asp-controller="Policies" asp-action="Index" asp-route-search="@Model.RoleName" class="btn btn-sm btn-info">
+                    View Related Policies
+                </a>
+
+                <hr />
+
+                <h6 class="mt-3">Role Hierarchy:</h6>
+                <p class="small">
+                    Roles can inherit permissions from other roles through 'g' type policies. Check the Policies page to see role relationships.
+                </p>
+
+                <hr />
+
+                <h6 class="mt-3">Usage Notes:</h6>
+                <ul class="small">
+                    <li>Role names should be unique within a workstream</li>
+                    <li>System roles cannot be deleted for data integrity</li>
+                    <li>Inactive roles are ignored during authorization checks</li>
+                    <li>Deleting a role requires removing all policy references first</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>

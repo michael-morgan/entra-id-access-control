@@ -1,0 +1,104 @@
+@model UI.Modules.AccessControl.Models.ResourceViewModel
+
+@{
+    ViewData["Title"] = "Create Resource";
+}
+
+<h1>Create New Resource</h1>
+
+<hr />
+<div class="row">
+    <div class="col-md-8">
+        <form asp-action="Create">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="mb-3">
+                <label asp-for="ResourcePattern" class="form-label"></label>
+                <input asp-for="ResourcePattern" class="form-control" placeholder="e.g., Loan, Loan/Application, Document/*" />
+                <span asp-validation-for="ResourcePattern" class="text-danger"></span>
+                <div class="form-text">Resource pattern (supports wildcards and path segments)</div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="WorkstreamId" class="form-label"></label>
+                <div class="input-group">
+                    <input asp-for="WorkstreamId" class="form-control" placeholder="e.g., loans, claims, documents" />
+                    <button type="button" class="btn btn-outline-secondary" onclick="document.querySelector('[name=WorkstreamId]').value = '*'">Set Global (*)</button>
+                </div>
+                <span asp-validation-for="WorkstreamId" class="text-danger"></span>
+                <div class="form-text">Workstream ID or "*" for global resources shared across all workstreams</div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="DisplayName" class="form-label"></label>
+                <input asp-for="DisplayName" class="form-control" placeholder="e.g., Loan Applications" />
+                <span asp-validation-for="DisplayName" class="text-danger"></span>
+                <div class="form-text">User-friendly name for the resource</div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Description" class="form-label"></label>
+                <textarea asp-for="Description" class="form-control" rows="3" placeholder="Describe what this resource represents..."></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
+                <div class="form-text">Optional description of the resource</div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="ParentResource" class="form-label"></label>
+                <input asp-for="ParentResource" class="form-control" placeholder="e.g., Loan (for hierarchical resources)" />
+                <span asp-validation-for="ParentResource" class="text-danger"></span>
+                <div class="form-text">Optional parent resource for hierarchical organization (g2 policies)</div>
+            </div>
+
+            <div class="mb-3">
+                <button type="submit" class="btn btn-primary">Create</button>
+                <a asp-action="Index" class="btn btn-secondary">Back to List</a>
+            </div>
+        </form>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>Examples</h5>
+            </div>
+            <div class="card-body">
+                <h6>Root Resource:</h6>
+                <ul class="small">
+                    <li><strong>Pattern:</strong> Loan</li>
+                    <li><strong>Workstream:</strong> loans</li>
+                    <li><strong>Display Name:</strong> Loan Applications</li>
+                    <li><strong>Parent:</strong> (empty)</li>
+                </ul>
+
+                <h6 class="mt-3">Child Resource:</h6>
+                <ul class="small">
+                    <li><strong>Pattern:</strong> Loan/Application</li>
+                    <li><strong>Workstream:</strong> loans</li>
+                    <li><strong>Display Name:</strong> Loan Application</li>
+                    <li><strong>Parent:</strong> Loan</li>
+                </ul>
+
+                <h6 class="mt-3">Wildcard Resource:</h6>
+                <ul class="small">
+                    <li><strong>Pattern:</strong> Document/*</li>
+                    <li><strong>Workstream:</strong> documents</li>
+                    <li><strong>Display Name:</strong> All Documents</li>
+                    <li><strong>Parent:</strong> (empty)</li>
+                </ul>
+
+                <h6 class="mt-3">Global Resource:</h6>
+                <ul class="small">
+                    <li><strong>Pattern:</strong> Report</li>
+                    <li><strong>Workstream:</strong> *</li>
+                    <li><strong>Display Name:</strong> Reports</li>
+                    <li><strong>Parent:</strong> (empty)</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

@@ -1,0 +1,96 @@
+@model UI.Modules.AccessControl.Models.GroupAttributeViewModel
+
+@{
+    ViewData["Title"] = "Edit Group Attributes";
+}
+
+<h2>Edit Group Attributes</h2>
+
+<h4>Group: @Model.GroupName</h4>
+<hr />
+<div class="row">
+    <div class="col-md-8">
+        <form asp-action="Edit">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="Id" />
+
+            <div class="mb-3">
+                <label asp-for="GroupId" class="form-label"></label>
+                <input asp-for="GroupId" class="form-control" readonly />
+                <span asp-validation-for="GroupId" class="text-danger"></span>
+                <div class="form-text">Group ID cannot be changed</div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="GroupName" class="form-label"></label>
+                <input asp-for="GroupName" class="form-control" />
+                <span asp-validation-for="GroupName" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="WorkstreamId" class="form-label"></label>
+                <input asp-for="WorkstreamId" class="form-control" placeholder="e.g., Loans, Claims, Payments" />
+                <span asp-validation-for="WorkstreamId" class="text-danger"></span>
+                <div class="form-text">Optional workstream identifier for multi-tenant scenarios</div>
+            </div>
+
+            <div class="mb-3">
+                <div class="form-check">
+                    <input asp-for="IsActive" class="form-check-input" type="checkbox" />
+                    <label asp-for="IsActive" class="form-check-label"></label>
+                </div>
+                <span asp-validation-for="IsActive" class="text-danger"></span>
+                <div class="form-text">Whether this group's attributes are currently active</div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Group Attributes</label>
+                <div id="attributeFormContainer"></div>
+                <input asp-for="AttributesJson" type="hidden" />
+                <span asp-validation-for="AttributesJson" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <button type="submit" class="btn btn-primary">Save</button>
+                <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>JSON Attributes Example</h5>
+            </div>
+            <div class="card-body">
+                <h6>Sample JSON:</h6>
+                <pre class="small bg-light p-2"><code>{
+  "Department": "Finance",
+  "Region": "North",
+  "ManagementLevel": 2,
+  "ApprovalLimit": 50000,
+  "CostCenter": "CC-12345",
+  "BusinessUnit": "Corporate"
+}</code></pre>
+                <p class="small mt-2">Ensure the JSON is valid before saving.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script src="~/js/attribute-form-builder.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const workstreamId = '@ViewBag.SelectedWorkstream';
+            const formBuilder = new AttributeFormBuilder(
+                workstreamId,
+                'Group',
+                '#attributeFormContainer',
+                '#AttributesJson'
+            );
+            formBuilder.init();
+        });
+    </script>
+}

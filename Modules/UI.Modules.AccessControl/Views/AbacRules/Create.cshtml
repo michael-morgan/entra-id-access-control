@@ -1,0 +1,179 @@
+@model UI.Modules.AccessControl.Models.AbacRuleViewModel
+
+@{
+    ViewData["Title"] = "Create ABAC Rule";
+}
+
+<div class="row mb-3">
+    <div class="col-md-12">
+        <h2>@ViewData["Title"]</h2>
+        <p class="lead">Create a new ABAC rule for attribute-based authorization.</p>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-12">
+        <div class="alert alert-info">
+            <strong>Workstream:</strong> @ViewBag.SelectedWorkstream
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <form asp-action="Create" method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h4>Rule Information</h4>
+                </div>
+                <div class="card-body">
+                    <div class="form-group mb-3">
+                        <label asp-for="RuleName" class="control-label"></label>
+                        <input asp-for="RuleName" class="form-control" />
+                        <span asp-validation-for="RuleName" class="text-danger"></span>
+                        <small class="form-text text-muted">A descriptive name for this rule (e.g., "Department Match", "Approval Limit Check")</small>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="RuleType" class="control-label"></label>
+                        <select asp-for="RuleType" class="form-control" id="RuleType">
+                            <option value="">-- Select Rule Type --</option>
+                            <option value="AttributeComparison">Attribute Comparison</option>
+                            <option value="PropertyMatch">Property Match</option>
+                            <option value="ValueRange">Value Range</option>
+                            <option value="TimeRestriction">Time Restriction</option>
+                            <option value="LocationRestriction">Location Restriction</option>
+                            <option value="AttributeValue">Attribute Value</option>
+                        </select>
+                        <span asp-validation-for="RuleType" class="text-danger"></span>
+                        <small class="form-text text-muted">The type of authorization rule to apply</small>
+                    </div>
+
+                    <!-- Dynamic Form Builder Container -->
+                    <div id="dynamicFormContainer" class="mb-3"></div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="RuleGroupId" class="control-label"></label>
+                        <select asp-for="RuleGroupId" class="form-control" asp-items="ViewBag.RuleGroups">
+                            <option value="">Standalone (not in a group)</option>
+                        </select>
+                        <span asp-validation-for="RuleGroupId" class="text-danger"></span>
+                        <small class="form-text text-muted">Optional: Assign this rule to a rule group</small>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="Priority" class="control-label"></label>
+                        <input asp-for="Priority" class="form-control" type="number" value="0" />
+                        <span asp-validation-for="Priority" class="text-danger"></span>
+                        <small class="form-text text-muted">Lower numbers have higher priority (0 = highest priority)</small>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="Configuration" class="control-label"></label>
+                        <textarea asp-for="Configuration" class="form-control" rows="10" id="Configuration" readonly></textarea>
+                        <span asp-validation-for="Configuration" class="text-danger"></span>
+                        <small class="form-text text-muted">Auto-generated JSON configuration (use the form builder above)</small>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="FailureMessage" class="control-label"></label>
+                        <input asp-for="FailureMessage" class="form-control" />
+                        <span asp-validation-for="FailureMessage" class="text-danger"></span>
+                        <small class="form-text text-muted">Optional: Message to display when authorization fails</small>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input asp-for="IsActive" class="form-check-input" type="checkbox" checked />
+                        <label asp-for="IsActive" class="form-check-label"></label>
+                        <span asp-validation-for="IsActive" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group mt-3">
+                <input type="submit" value="Create" class="btn btn-success" />
+                <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card border-info">
+            <div class="card-header bg-info text-white">
+                <h5>Configuration Examples by Rule Type</h5>
+            </div>
+            <div class="card-body">
+                <h6>Attribute Comparison</h6>
+                <pre class="bg-light p-2 border rounded">
+{
+  "leftAttribute": "user.department",
+  "operator": "equals",
+  "rightProperty": "claim.department"
+}
+                </pre>
+
+                <h6>Property Match</h6>
+                <pre class="bg-light p-2 border rounded">
+{
+  "property": "document.status",
+  "operator": "in",
+  "values": ["Draft", "Pending"]
+}
+                </pre>
+
+                <h6>Value Range</h6>
+                <pre class="bg-light p-2 border rounded">
+{
+  "property": "claim.amount",
+  "operator": "lessThanOrEqual",
+  "compareToAttribute": "user.approvalLimit"
+}
+                </pre>
+
+                <h6>Time Restriction</h6>
+                <pre class="bg-light p-2 border rounded">
+{
+  "allowedHours": {
+    "start": "09:00",
+    "end": "17:00"
+  },
+  "allowedDays": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+}
+                </pre>
+
+                <h6>Location Restriction</h6>
+                <pre class="bg-light p-2 border rounded">
+{
+  "allowedRegions": ["US", "CA", "EU"],
+  "allowedCountries": ["United States", "Canada", "Germany"]
+}
+                </pre>
+
+                <h6>Attribute Value</h6>
+                <pre class="bg-light p-2 border rounded">
+{
+  "attribute": "user.certified",
+  "operator": "equals",
+  "value": true
+}
+                </pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script src="~/js/abac-rule-builder.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            const workstreamId = '@ViewBag.SelectedWorkstream';
+            const builder = new AbacRuleBuilder(workstreamId, 'RuleType', 'Configuration', 'dynamicFormContainer');
+            await builder.init();
+        });
+    </script>
+}

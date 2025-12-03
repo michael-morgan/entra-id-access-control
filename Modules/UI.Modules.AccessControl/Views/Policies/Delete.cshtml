@@ -1,0 +1,55 @@
+@model Api.Modules.AccessControl.Persistence.Entities.Authorization.CasbinPolicy
+
+@{
+    ViewData["Title"] = "Delete Policy";
+}
+
+<h2>Delete Policy</h2>
+
+<h3>Are you sure you want to delete this policy?</h3>
+<div class="alert alert-warning">
+    <strong>Warning:</strong> This will permanently remove the authorization policy from the system.
+</div>
+
+<div>
+    <h4>Policy Details</h4>
+    <hr />
+    <dl class="row">
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.PolicyType)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.PolicyType)
+        </dd>
+        <dt class="col-sm-2">
+            V0 (Subject)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.V0)
+        </dd>
+        @if (!string.IsNullOrWhiteSpace(Model.V1))
+        {
+            <dt class="col-sm-2">
+                V1 (Object)
+            </dt>
+            <dd class="col-sm-10">
+                @Html.DisplayFor(model => model.V1)
+            </dd>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.V2))
+        {
+            <dt class="col-sm-2">
+                V2 (Action)
+            </dt>
+            <dd class="col-sm-10">
+                @Html.DisplayFor(model => model.V2)
+            </dd>
+        }
+    </dl>
+
+    <form asp-action="Delete">
+        <input type="hidden" asp-for="Id" />
+        <button type="submit" class="btn btn-danger">Delete</button>
+        <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>

@@ -1,0 +1,101 @@
+@model UI.Modules.AccessControl.Models.GroupAttributeViewModel
+
+@{
+    ViewData["Title"] = "Create Group Attributes";
+}
+
+<h1>Create Group Attributes</h1>
+
+<hr />
+<div class="row">
+    <div class="col-md-8">
+        <form asp-action="Create">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="mb-3">
+                <label asp-for="GroupId" class="form-label"></label>
+                <input asp-for="GroupId" class="form-control" placeholder="e.g., 87654321-4321-4321-4321-210987654321" />
+                <span asp-validation-for="GroupId" class="text-danger"></span>
+                <div class="form-text">The Entra ID Group Object ID from the JWT token</div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="GroupName" class="form-label"></label>
+                <input asp-for="GroupName" class="form-control" placeholder="e.g., Finance Team, HR Managers" />
+                <span asp-validation-for="GroupName" class="text-danger"></span>
+                <div class="form-text">Display name for the group</div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="WorkstreamId" class="form-label"></label>
+                <input asp-for="WorkstreamId" class="form-control" placeholder="e.g., Loans, Claims, Payments" />
+                <span asp-validation-for="WorkstreamId" class="text-danger"></span>
+                <div class="form-text">Optional workstream identifier for multi-tenant scenarios</div>
+            </div>
+
+            <div class="mb-3">
+                <div class="form-check">
+                    <input asp-for="IsActive" class="form-check-input" type="checkbox" />
+                    <label asp-for="IsActive" class="form-check-label"></label>
+                </div>
+                <span asp-validation-for="IsActive" class="text-danger"></span>
+                <div class="form-text">Whether this group's attributes are currently active</div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Group Attributes</label>
+                <div id="attributeFormContainer"></div>
+                <input asp-for="AttributesJson" type="hidden" />
+                <span asp-validation-for="AttributesJson" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <button type="submit" class="btn btn-primary">Create</button>
+                <a asp-action="Index" class="btn btn-secondary">Back to List</a>
+            </div>
+        </form>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>JSON Attributes Example</h5>
+            </div>
+            <div class="card-body">
+                <h6>Sample JSON:</h6>
+                <pre class="small bg-light p-2"><code>{
+  "Department": "Finance",
+  "Region": "North",
+  "ManagementLevel": 2,
+  "ApprovalLimit": 50000,
+  "CostCenter": "CC-12345",
+  "BusinessUnit": "Corporate"
+}</code></pre>
+
+                <h6 class="mt-3">Attribute Precedence:</h6>
+                <ol class="small">
+                    <li><strong>User attributes</strong> (highest)</li>
+                    <li><strong>Role attributes</strong></li>
+                    <li><strong>Group attributes</strong> (lowest)</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script src="~/js/attribute-form-builder.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const workstreamId = '@ViewBag.SelectedWorkstream';
+            const formBuilder = new AttributeFormBuilder(
+                workstreamId,
+                'Group',
+                '#attributeFormContainer',
+                '#AttributesJson'
+            );
+            formBuilder.init();
+        });
+    </script>
+}

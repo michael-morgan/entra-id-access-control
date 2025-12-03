@@ -1,0 +1,326 @@
+@{
+    ViewData["Title"] = "Authorization Testing";
+}
+
+<h1>Authorization Testing</h1>
+
+<div class="alert alert-info">
+    <strong>Test Authorization Setup:</strong> Paste a JWT token to decode and view all associated access control data (roles, groups, ABAC attributes, policies, and rules).
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Token Input & Workstream Selection</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="jwtToken" class="form-label">JWT Token</label>
+                    <textarea id="jwtToken" class="form-control" rows="4" placeholder="Paste JWT Bearer token here..."></textarea>
+                    <div class="form-text">The token will be decoded without validation for display purposes only.</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="workstreamId" class="form-label">Workstream ID</label>
+                    <select id="workstreamId" class="form-select">
+                        <option value="platform">Platform</option>
+                        <option value="loans">Loans</option>
+                        <option value="claims">Claims</option>
+                        <option value="documents">Documents</option>
+                    </select>
+                    <div class="form-text">Select the workstream context for testing.</div>
+                </div>
+
+                <button id="analyzeToken" class="btn btn-primary">Analyze Token</button>
+                <button id="clearResults" class="btn btn-secondary">Clear Results</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="results" style="display:none;" class="mt-4">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Token Claims</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0" id="tokenClaims">
+                    </dl>
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Groups & Roles</h5>
+                </div>
+                <div class="card-body">
+                    <h6>Groups:</h6>
+                    <div id="groupsList" class="mb-3"></div>
+
+                    <h6>Roles:</h6>
+                    <div id="rolesList"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header bg-warning">
+                    <h5 class="mb-0">Merged ABAC Attributes</h5>
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted">Precedence: User (green) > Role (yellow) > Group (blue)</p>
+                    <table class="table table-sm" id="mergedAttributesTable">
+                        <thead>
+                            <tr>
+                                <th>Attribute</th>
+                                <th>Value</th>
+                                <th>Source</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">User Attributes</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm" id="userAttributesTable">
+                        <thead>
+                            <tr>
+                                <th>Attribute</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Role & Group Attributes</h5>
+                </div>
+                <div class="card-body">
+                    <h6>Role Attributes:</h6>
+                    <table class="table table-sm mb-3" id="roleAttributesTable">
+                        <thead>
+                            <tr>
+                                <th>Role</th>
+                                <th>Attribute</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+
+                    <h6>Group Attributes:</h6>
+                    <table class="table table-sm" id="groupAttributesTable">
+                        <thead>
+                            <tr>
+                                <th>Group</th>
+                                <th>Attribute</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card mb-3">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">Applicable Casbin Policies</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm" id="policiesTable">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Policy</th>
+                                <th>Workstream</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">ABAC Rules</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm" id="abacRulesTable">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Rule</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">ABAC Rule Groups</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm" id="ruleGroupsTable">
+                        <thead>
+                            <tr>
+                                <th>Group Name</th>
+                                <th>Logic</th>
+                                <th>Rules</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Section 5: Interactive Test Scenarios -->
+<div id="scenariosSection" class="row mt-4" style="display:none;">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Interactive Test Scenarios</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Run predefined authorization test scenarios based on your permissions.</p>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="border p-3 rounded">
+                            <h6>Loans - Basic Access</h6>
+                            <p class="small text-muted">Test basic access to loans workstream (list and read operations)</p>
+                            <button class="btn btn-sm btn-outline-primary scenario-button" data-scenario="loans-basic-access">Run Scenario</button>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <div class="border p-3 rounded">
+                            <h6>Loans - Approval Within Limits</h6>
+                            <p class="small text-muted">Test loan approval within user's approval limit ($150K)</p>
+                            <button class="btn btn-sm btn-outline-primary scenario-button" data-scenario="loans-approval-within-limits">Run Scenario</button>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <div class="border p-3 rounded">
+                            <h6>Loans - Approval Exceeding Limits</h6>
+                            <p class="small text-muted">Test loan approval exceeding user's approval limit ($500K - should fail)</p>
+                            <button class="btn btn-sm btn-outline-primary scenario-button" data-scenario="loans-approval-exceeding-limits">Run Scenario</button>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <div class="border p-3 rounded">
+                            <h6>Loans - Region Mismatch</h6>
+                            <p class="small text-muted">Test loan approval in wrong region (should fail)</p>
+                            <button class="btn btn-sm btn-outline-primary scenario-button" data-scenario="loans-region-mismatch">Run Scenario</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Section 6: Custom Test Builder -->
+<div id="customTestSection" class="row mt-4" style="display:none;">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Custom Test Builder</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Build custom authorization tests with specific resource and action combinations.</p>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="customResource" class="form-label">Resource</label>
+                            <input type="text" id="customResource" class="form-control" placeholder="e.g., Loan, Loan/:id, Document">
+                            <div class="form-text">The resource to test access against</div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="customAction" class="form-label">Action</label>
+                            <input type="text" id="customAction" class="form-control" placeholder="e.g., read, write, approve, delete">
+                            <div class="form-text">The action to test</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="customEntityJson" class="form-label">Mock Entity (Optional JSON)</label>
+                    <textarea id="customEntityJson" class="form-control" rows="4" placeholder='{"RequestedAmount": 150000, "Region": "US-WEST", "Status": "Submitted"}'></textarea>
+                    <div class="form-text">Optional: Provide a JSON object representing the entity for ABAC evaluation</div>
+                </div>
+
+                <button id="runCustomTest" class="btn btn-success">Run Custom Test</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Section 7: Authorization Evaluation Trace -->
+<div id="evaluationTraceSection" class="row mt-4" style="display:none;">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-warning">
+                <h5 class="mb-0">Authorization Evaluation Trace</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Step-by-step trace of the authorization decision process</p>
+                <div id="evaluationTrace">
+                    <!-- Trace steps will be dynamically inserted here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="errorAlert" class="alert alert-danger mt-3" style="display:none;">
+</div>
+
+@section Scripts {
+    <script src="~/js/test-analyzer.js" asp-append-version="true"></script>
+}

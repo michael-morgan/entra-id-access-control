@@ -1,0 +1,97 @@
+@model IReadOnlyList<Api.Modules.AccessControl.Models.BusinessEventSummary>
+
+@{
+    ViewData["Title"] = "Business Process Timeline";
+    var processId = ViewBag.BusinessProcessId as string;
+}
+
+<h2>Business Process Timeline</h2>
+
+<div class="alert alert-info">
+    <strong>Business Process ID:</strong> <code>@processId</code>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5>Process Summary</h5>
+    </div>
+    <div class="card-body">
+        <dl class="row">
+            <dt class="col-sm-3">Total Events:</dt>
+            <dd class="col-sm-9">@Model.Count</dd>
+
+            <dt class="col-sm-3">Workstream:</dt>
+            <dd class="col-sm-9">
+                @if (Model.Any())
+                {
+                    <span class="badge bg-primary">@Model.First().WorkstreamId</span>
+                }
+            </dd>
+
+            <dt class="col-sm-3">Process Started:</dt>
+            <dd class="col-sm-9">
+                @if (Model.Any())
+                {
+                    @Model.Min(e => e.OccurredAt).ToString("yyyy-MM-dd HH:mm:ss")
+                }
+            </dd>
+
+            <dt class="col-sm-3">Last Activity:</dt>
+            <dd class="col-sm-9">
+                @if (Model.Any())
+                {
+                    @Model.Max(e => e.OccurredAt).ToString("yyyy-MM-dd HH:mm:ss")
+                }
+            </dd>
+
+            <dt class="col-sm-3">Duration:</dt>
+            <dd class="col-sm-9">
+                @if (Model.Any())
+                {
+                    <text>@((Model.Max(e => e.OccurredAt) - Model.Min(e => e.OccurredAt)).TotalMinutes.ToString("F2")) minutes</text>
+                }
+            </dd>
+        </dl>
+    </div>
+</div>
+
+<div class="mt-4">
+    <h5>Event Timeline</h5>
+    <div class="timeline">
+        @foreach (var evt in Model.OrderBy(e => e.OccurredAt))
+        {
+            <div class="card mb-3">
+                <div class="card-header">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <strong>@evt.EventType</strong>
+                            <span class="badge bg-info ms-2">@evt.EventCategory</span>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <small class="text-muted">@evt.OccurredAt.ToString("yyyy-MM-dd HH:mm:ss.fff")</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-2">Event ID:</dt>
+                        <dd class="col-sm-10">
+                            <code>@evt.EventId</code>
+                            <a asp-action="Details" asp-route-id="@evt.EventId" class="btn btn-sm btn-info ms-2">View Details</a>
+                        </dd>
+
+                        <dt class="col-sm-2">Actor:</dt>
+                        <dd class="col-sm-10">@evt.ActorDisplayName</dd>
+
+                        <dt class="col-sm-2">Workstream:</dt>
+                        <dd class="col-sm-10"><span class="badge bg-primary">@evt.WorkstreamId</span></dd>
+                    </dl>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="mt-3">
+    <a asp-action="Index" class="btn btn-secondary">Back to Events</a>
+</div>

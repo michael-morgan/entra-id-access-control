@@ -52,3 +52,13 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# Markdown - ignore all by default
+*.md
+
+# But include important documentation
+!README.md
+!Tests/README.md
+
+# Corrupt files
+nul

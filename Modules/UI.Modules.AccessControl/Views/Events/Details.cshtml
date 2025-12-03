@@ -1,0 +1,125 @@
+@model Api.Modules.AccessControl.Models.BusinessEventDetail
+
+@{
+    ViewData["Title"] = "Event Details";
+}
+
+<h2>Business Event Details</h2>
+
+<div>
+    <h4>@Model.EventType</h4>
+    <hr />
+    <dl class="row">
+        <dt class="col-sm-2">
+            Event ID
+        </dt>
+        <dd class="col-sm-10">
+            <code>@Model.EventId</code>
+        </dd>
+        <dt class="col-sm-2">
+            Sequence Number
+        </dt>
+        <dd class="col-sm-10">
+            @Model.SequenceNumber
+        </dd>
+        <dt class="col-sm-2">
+            Event Type
+        </dt>
+        <dd class="col-sm-10">
+            <span class="badge bg-secondary">@Model.EventType</span>
+        </dd>
+        <dt class="col-sm-2">
+            Event Category
+        </dt>
+        <dd class="col-sm-10">
+            <span class="badge bg-info">@Model.EventCategory</span>
+        </dd>
+        <dt class="col-sm-2">
+            Event Version
+        </dt>
+        <dd class="col-sm-10">
+            @Model.EventVersion
+        </dd>
+        <dt class="col-sm-2">
+            Workstream
+        </dt>
+        <dd class="col-sm-10">
+            <span class="badge bg-primary">@Model.WorkstreamId</span>
+        </dd>
+        <dt class="col-sm-2">
+            Occurred At
+        </dt>
+        <dd class="col-sm-10">
+            @Model.OccurredAt.ToString("yyyy-MM-dd HH:mm:ss.fff")
+        </dd>
+        <dt class="col-sm-2">
+            Recorded At
+        </dt>
+        <dd class="col-sm-10">
+            @Model.RecordedAt.ToString("yyyy-MM-dd HH:mm:ss.fff")
+        </dd>
+        <dt class="col-sm-2">
+            Actor
+        </dt>
+        <dd class="col-sm-10">
+            @Model.ActorDisplayName
+        </dd>
+        <dt class="col-sm-2">
+            Actor ID
+        </dt>
+        <dd class="col-sm-10">
+            <code>@Model.ActorType: @Model.ActorId</code>
+        </dd>
+        <dt class="col-sm-2">
+            Business Process
+        </dt>
+        <dd class="col-sm-10">
+            @if (!string.IsNullOrWhiteSpace(Model.BusinessProcessId))
+            {
+                <code>@Model.BusinessProcessId</code>
+                <a asp-action="ProcessTimeline" asp-route-id="@Model.BusinessProcessId" class="btn btn-sm btn-info ms-2">View Process Timeline</a>
+            }
+            else
+            {
+                <text>None</text>
+            }
+        </dd>
+        @if (!string.IsNullOrWhiteSpace(Model.Justification))
+        {
+            <dt class="col-sm-2">
+                Justification
+            </dt>
+            <dd class="col-sm-10">
+                @Model.Justification
+            </dd>
+        }
+    </dl>
+
+    @if (Model.AffectedEntities.Any())
+    {
+        <h5>Affected Entities</h5>
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Entity Type</th>
+                    <th>Entity ID</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var entity in Model.AffectedEntities)
+                {
+                    <tr>
+                        <td>@entity.EntityType</td>
+                        <td><code>@entity.EntityId</code></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    <h5>Event Data</h5>
+    <pre class="bg-light p-3"><code>@Model.EventDataJson</code></pre>
+</div>
+<div>
+    <a asp-action="Index" class="btn btn-secondary">Back to List</a>
+</div>

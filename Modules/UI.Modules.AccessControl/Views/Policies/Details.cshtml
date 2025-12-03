@@ -1,0 +1,99 @@
+@model Api.Modules.AccessControl.Persistence.Entities.Authorization.CasbinPolicy
+
+@{
+    ViewData["Title"] = "Policy Details";
+}
+
+<h2>Policy Details</h2>
+
+<div>
+    <h4>Casbin Policy</h4>
+    <hr />
+    <dl class="row">
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.Id)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.Id)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.PolicyType)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.PolicyType)
+        </dd>
+        <dt class="col-sm-2">
+            V0 (Subject)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.V0)
+        </dd>
+        @if (!string.IsNullOrWhiteSpace(Model.V1))
+        {
+            <dt class="col-sm-2">
+                V1 (Object)
+            </dt>
+            <dd class="col-sm-10">
+                @Html.DisplayFor(model => model.V1)
+            </dd>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.V2))
+        {
+            <dt class="col-sm-2">
+                V2 (Action)
+            </dt>
+            <dd class="col-sm-10">
+                @Html.DisplayFor(model => model.V2)
+            </dd>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.V3))
+        {
+            <dt class="col-sm-2">
+                V3
+            </dt>
+            <dd class="col-sm-10">
+                @Html.DisplayFor(model => model.V3)
+            </dd>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.V4))
+        {
+            <dt class="col-sm-2">
+                V4
+            </dt>
+            <dd class="col-sm-10">
+                @Html.DisplayFor(model => model.V4)
+            </dd>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.V5))
+        {
+            <dt class="col-sm-2">
+                V5
+            </dt>
+            <dd class="col-sm-10">
+                @Html.DisplayFor(model => model.V5)
+            </dd>
+        }
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.IsActive)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.IsActive)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.CreatedAt)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.CreatedAt)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.ModifiedAt)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.ModifiedAt)
+        </dd>
+    </dl>
+</div>
+<div>
+    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">Edit</a>
+    <a asp-action="Index" class="btn btn-secondary">Back to List</a>
+</div>

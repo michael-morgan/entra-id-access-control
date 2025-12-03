@@ -1,0 +1,162 @@
+@model Api.Modules.AccessControl.Persistence.Entities.Authorization.AbacRule
+
+@{
+    ViewData["Title"] = "ABAC Rule Details";
+}
+
+<div class="row mb-3">
+    <div class="col-md-12">
+        <h2>@ViewData["Title"]</h2>
+        <p class="lead">Detailed information about the ABAC rule.</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h4>@Model.RuleName</h4>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-3">Rule ID</dt>
+                    <dd class="col-sm-9">@Model.Id</dd>
+
+                    <dt class="col-sm-3">Workstream</dt>
+                    <dd class="col-sm-9">@Model.WorkstreamId</dd>
+
+                    <dt class="col-sm-3">Rule Group</dt>
+                    <dd class="col-sm-9">
+                        @if (Model.RuleGroup != null)
+                        {
+                            <a asp-controller="AbacRuleGroups" asp-action="Details" asp-route-id="@Model.RuleGroupId">
+                                @Model.RuleGroup.GroupName
+                            </a>
+                        }
+                        else
+                        {
+                            <span class="text-muted">Standalone rule (not in a group)</span>
+                        }
+                    </dd>
+
+                    <dt class="col-sm-3">Rule Name</dt>
+                    <dd class="col-sm-9">@Model.RuleName</dd>
+
+                    <dt class="col-sm-3">Rule Type</dt>
+                    <dd class="col-sm-9">
+                        <span class="badge bg-info">@Model.RuleType</span>
+                    </dd>
+
+                    <dt class="col-sm-3">Status</dt>
+                    <dd class="col-sm-9">
+                        @if (Model.IsActive)
+                        {
+                            <span class="badge bg-success">Active</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-warning text-dark">Inactive</span>
+                        }
+                    </dd>
+
+                    <dt class="col-sm-3">Priority</dt>
+                    <dd class="col-sm-9">@Model.Priority</dd>
+
+                    <dt class="col-sm-3">Failure Message</dt>
+                    <dd class="col-sm-9">
+                        @if (!string.IsNullOrWhiteSpace(Model.FailureMessage))
+                        {
+                            @Model.FailureMessage
+                        }
+                        else
+                        {
+                            <span class="text-muted">None</span>
+                        }
+                    </dd>
+
+                    <dt class="col-sm-3">Configuration (JSON)</dt>
+                    <dd class="col-sm-9">
+                        <pre class="bg-light p-3 border rounded">@Model.Configuration</pre>
+                    </dd>
+
+                    <dt class="col-sm-3">Created At</dt>
+                    <dd class="col-sm-9">@Model.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</dd>
+
+                    <dt class="col-sm-3">Created By</dt>
+                    <dd class="col-sm-9">
+                        @if (!string.IsNullOrWhiteSpace(Model.CreatedBy))
+                        {
+                            @Model.CreatedBy
+                        }
+                        else
+                        {
+                            <span class="text-muted">Unknown</span>
+                        }
+                    </dd>
+
+                    @if (Model.ModifiedAt.HasValue)
+                    {
+                        <dt class="col-sm-3">Modified At</dt>
+                        <dd class="col-sm-9">@Model.ModifiedAt.Value.ToString("yyyy-MM-dd HH:mm:ss")</dd>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(Model.ModifiedBy))
+                    {
+                        <dt class="col-sm-3">Modified By</dt>
+                        <dd class="col-sm-9">@Model.ModifiedBy</dd>
+                    }
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">Edit</a>
+        <a asp-action="Index" class="btn btn-secondary">Back to List</a>
+        <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-danger">Delete</a>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card border-info">
+            <div class="card-header bg-info text-white">
+                <h5>Rule Type: @Model.RuleType</h5>
+            </div>
+            <div class="card-body">
+                @switch (Model.RuleType)
+                {
+                    case "AttributeComparison":
+                        <p><strong>Attribute Comparison:</strong> Compares user/group/role attributes with entity properties.</p>
+                        <p>Example: Compare user's department with claim's department to ensure they match.</p>
+                        break;
+                    case "PropertyMatch":
+                        <p><strong>Property Match:</strong> Matches entity properties against specific values.</p>
+                        <p>Example: Check if a document's status equals "Draft" or "Pending".</p>
+                        break;
+                    case "ValueRange":
+                        <p><strong>Value Range:</strong> Checks if numeric values fall within allowed ranges.</p>
+                        <p>Example: Ensure claim amount is less than user's approval limit.</p>
+                        break;
+                    case "TimeRestriction":
+                        <p><strong>Time Restriction:</strong> Enforces time-based access controls.</p>
+                        <p>Example: Only allow access during business hours (9 AM - 5 PM).</p>
+                        break;
+                    case "LocationRestriction":
+                        <p><strong>Location Restriction:</strong> Enforces location-based access controls.</p>
+                        <p>Example: Only allow access from specific regions or countries.</p>
+                        break;
+                    case "AttributeValue":
+                        <p><strong>Attribute Value:</strong> Checks attribute values directly.</p>
+                        <p>Example: Verify that user has attribute "certified" set to true.</p>
+                        break;
+                    default:
+                        <p>Unknown rule type.</p>
+                        break;
+                }
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,266 @@
+@model UI.Modules.AccessControl.Models.PolicyViewModel
+
+@{
+    ViewData["Title"] = "Create Policy";
+}
+
+<h1>Create New Policy</h1>
+
+<hr />
+<div class="row">
+    <div class="col-md-8">
+        <form asp-action="Create">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="mb-3">
+                <label asp-for="PolicyType" class="form-label"></label>
+                <select asp-for="PolicyType" class="form-select">
+                    <option value="">Select Policy Type</option>
+                    <option value="p">p (Permission Policy)</option>
+                    <option value="g">g (Role Inheritance/Grouping)</option>
+                    <option value="g2">g2 (Resource Grouping)</option>
+                </select>
+                <span asp-validation-for="PolicyType" class="text-danger"></span>
+                <div class="form-text">p = permission policy, g = role grouping, g2 = resource grouping</div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="V0" class="form-label"></label>
+                <div class="input-group">
+                    <input asp-for="V0" class="form-control" id="V0Input" />
+                    <select class="form-select" id="V0RoleSelect" style="max-width: 50%;">
+                        <option value="">-- Select Role --</option>
+                        @if (ViewBag.AvailableRoles != null)
+                        {
+                            foreach (var role in ViewBag.AvailableRoles)
+                            {
+                                <option value="@role">@role</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <span asp-validation-for="V0" class="text-danger"></span>
+                <div class="form-text">Subject (user/role) for 'p' policies, or sub-role for 'g' policies</div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="V1" class="form-label">V1 (Workstream/Role)</label>
+                <div class="input-group">
+                    <input asp-for="V1" class="form-control" id="V1Input" placeholder="For 'p': workstream, for 'g': parent role" />
+                    <select class="form-select" id="V1Select" style="max-width: 50%;">
+                        <option value="">-- Select --</option>
+                    </select>
+                </div>
+                <span asp-validation-for="V1" class="text-danger"></span>
+                <div class="form-text">For 'p' policies: workstream/domain (defaults to '@ViewBag.SelectedWorkstream'). For 'g' policies: parent role name.</div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="V2" class="form-label">V2 (Resource/Domain)</label>
+                <div class="input-group">
+                    <input asp-for="V2" class="form-control" id="V2Input" />
+                    <select class="form-select" id="V2Select" style="max-width: 50%;">
+                        <option value="">-- Select --</option>
+                    </select>
+                </div>
+                <span asp-validation-for="V2" class="text-danger"></span>
+                <div class="form-text" id="V2Help">For 'p' policies: resource pattern (Loan, Loan/*, etc.). For 'g' policies: workstream/domain (defaults to '@ViewBag.SelectedWorkstream').</div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="V3" class="form-label">V3 (Action)</label>
+                <input asp-for="V3" class="form-control" id="V3Input" placeholder="read, write, list, approve, etc." />
+                <span asp-validation-for="V3" class="text-danger"></span>
+                <div class="form-text">For 'p' policies: action (read, write, list, etc.). Leave empty for 'g' policies.</div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="V4" class="form-label">V4 (Effect)</label>
+                <select asp-for="V4" class="form-select">
+                    <option value="">-- Select Effect --</option>
+                    <option value="allow">allow</option>
+                    <option value="deny">deny</option>
+                </select>
+                <span asp-validation-for="V4" class="text-danger"></span>
+                <div class="form-text">Effect for 'p' policies (allow/deny)</div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="V5" class="form-label"></label>
+                <input asp-for="V5" class="form-control" />
+                <span asp-validation-for="V5" class="text-danger"></span>
+                <div class="form-text">Reserved for future use</div>
+            </div>
+
+            <div class="mb-3">
+                <div class="form-check">
+                    <input asp-for="IsActive" class="form-check-input" type="checkbox" checked />
+                    <label asp-for="IsActive" class="form-check-label"></label>
+                </div>
+                <div class="form-text">Inactive policies will not be evaluated</div>
+            </div>
+
+            <div class="mb-3">
+                <button type="submit" class="btn btn-primary">Create</button>
+                <a asp-action="Index" class="btn btn-secondary">Back to List</a>
+            </div>
+        </form>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>Examples</h5>
+            </div>
+            <div class="card-body">
+                <h6>Permission Policy (p):</h6>
+                <ul class="small">
+                    <li><strong>Type:</strong> p</li>
+                    <li><strong>V0:</strong> admin</li>
+                    <li><strong>V1:</strong> Loan/*</li>
+                    <li><strong>V2:</strong> *</li>
+                </ul>
+
+                <h6 class="mt-3">Role Grouping (g):</h6>
+                <ul class="small">
+                    <li><strong>Type:</strong> g</li>
+                    <li><strong>V0:</strong> alice</li>
+                    <li><strong>V1:</strong> admin</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        const selectedWorkstream = '@ViewBag.SelectedWorkstream';
+        const availableWorkstreams = @Html.Raw(Json.Serialize(ViewBag.AvailableWorkstreams ?? new List<string>()));
+        const availableRoles = @Html.Raw(Json.Serialize(ViewBag.AvailableRoles ?? new List<string>()));
+        const availableResources = @Html.Raw(Json.Serialize(ViewBag.AvailableResources ?? new List<string>()));
+
+        // Handle role selection for V0
+        document.getElementById('V0RoleSelect').addEventListener('change', function() {
+            if (this.value) {
+                document.getElementById('V0Input').value = this.value;
+            }
+        });
+
+        // Handle V1 selection
+        document.getElementById('V1Select').addEventListener('change', function() {
+            if (this.value) {
+                document.getElementById('V1Input').value = this.value;
+            }
+        });
+
+        // Handle resource selection for V2
+        const v2Select = document.getElementById('V2Select');
+        if (v2Select) {
+            v2Select.addEventListener('change', function() {
+                if (this.value) {
+                    document.getElementById('V2Input').value = this.value;
+                }
+            });
+        }
+
+        // Update V1 dropdown based on policy type
+        function updateV1Dropdown(policyType) {
+            const v1Select = document.getElementById('V1Select');
+            const v1Input = document.getElementById('V1Input');
+
+            // Clear existing options
+            v1Select.innerHTML = '<option value="">-- Select --</option>';
+
+            if (policyType === 'p') {
+                // For 'p' policies, show workstreams
+                availableWorkstreams.forEach(function(workstream) {
+                    const option = document.createElement('option');
+                    option.value = workstream;
+                    option.textContent = workstream;
+                    v1Select.appendChild(option);
+                });
+
+                // Auto-populate with current workstream if empty
+                if (!v1Input.value) {
+                    v1Input.value = selectedWorkstream;
+                }
+            } else if (policyType === 'g' || policyType === 'g2') {
+                // For 'g' policies, show roles
+                availableRoles.forEach(function(role) {
+                    const option = document.createElement('option');
+                    option.value = role;
+                    option.textContent = role;
+                    v1Select.appendChild(option);
+                });
+            }
+        }
+
+        // Update V2 dropdown based on policy type
+        function updateV2Dropdown(policyType) {
+            const v2Select = document.getElementById('V2Select');
+            const v2Input = document.getElementById('V2Input');
+
+            // Clear existing options
+            v2Select.innerHTML = '<option value="">-- Select --</option>';
+
+            if (policyType === 'p') {
+                // For 'p' policies, show resources
+                availableResources.forEach(function(resource) {
+                    const option = document.createElement('option');
+                    option.value = resource;
+                    option.textContent = resource;
+                    v2Select.appendChild(option);
+                });
+            } else if (policyType === 'g' || policyType === 'g2') {
+                // For 'g' policies, show workstreams
+                availableWorkstreams.forEach(function(workstream) {
+                    const option = document.createElement('option');
+                    option.value = workstream;
+                    option.textContent = workstream;
+                    v2Select.appendChild(option);
+                });
+
+                // Auto-populate with current workstream if empty
+                if (!v2Input.value) {
+                    v2Input.value = selectedWorkstream;
+                }
+            }
+        }
+
+        // Auto-populate V1 with workstream for 'p' policies, and V2 for 'g' policies
+        document.getElementById('PolicyType').addEventListener('change', function() {
+            const v1Input = document.getElementById('V1Input');
+            const v2Input = document.getElementById('V2Input');
+
+            // Update both V1 and V2 dropdown options
+            updateV1Dropdown(this.value);
+            updateV2Dropdown(this.value);
+
+            if (this.value === 'p' && !v1Input.value) {
+                // For permission policies, V1 = workstream
+                v1Input.value = selectedWorkstream;
+            } else if ((this.value === 'g' || this.value === 'g2') && !v2Input.value) {
+                // For grouping policies, V2 = workstream
+                v2Input.value = selectedWorkstream;
+            }
+        });
+
+        // Initialize fields on page load
+        window.addEventListener('DOMContentLoaded', function() {
+            const policyType = document.getElementById('PolicyType').value;
+            const v1Input = document.getElementById('V1Input');
+            const v2Input = document.getElementById('V2Input');
+
+            // Initialize V1 and V2 dropdowns
+            updateV1Dropdown(policyType);
+            updateV2Dropdown(policyType);
+
+            if (policyType === 'p' && !v1Input.value) {
+                v1Input.value = selectedWorkstream;
+            } else if ((policyType === 'g' || policyType === 'g2') && !v2Input.value) {
+                v2Input.value = selectedWorkstream;
+            }
+        });
+    </script>
+}

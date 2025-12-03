@@ -1,0 +1,166 @@
+@model List<UI.Modules.AccessControl.Models.RoleViewModel>
+
+@{
+    ViewData["Title"] = "Roles";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Roles</h1>
+    <a asp-action="Create" class="btn btn-primary">Create New Role</a>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form asp-action="Index" method="get" class="row g-3">
+            <div class="col-md-10">
+                <input type="text" name="search" class="form-control" placeholder="Search by role name, display name, or description..." value="@ViewBag.Search" />
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">Search</button>
+            </div>
+        </form>
+        @if (!string.IsNullOrWhiteSpace(ViewBag.Search))
+        {
+            <div class="mt-2">
+                <a asp-action="Index" class="btn btn-sm btn-secondary">Clear Search</a>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <strong>Workstream:</strong> @ViewBag.SelectedWorkstream
+    </div>
+    <div class="card-body">
+        @if (Model.Count == 0)
+        {
+            <div class="alert alert-info">
+                No roles found. <a asp-action="Create">Create your first role</a>.
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Role Name</th>
+                            <th>Display Name</th>
+                            <th>Description</th>
+                            <th>Workstream</th>
+                            <th>System Role</th>
+                            <th>Active</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var role in Model)
+                        {
+                            <tr>
+                                <td>
+                                    <code>@role.RoleName</code>
+                                    @if (role.IsSystemRole)
+                                    {
+                                        <span class="badge bg-info ms-1">System</span>
+                                    }
+                                </td>
+                                <td>@role.DisplayName</td>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(role.Description))
+                                    {
+                                        if (role.Description.Length > 50)
+                                        {
+                                            @(role.Description.Substring(0, 50) + "...")
+                                        }
+                                        else
+                                        {
+                                            @role.Description
+                                        }
+                                    }
+                                </td>
+                                <td>
+                                    @if (role.WorkstreamId == "*")
+                                    {
+                                        <span class="badge bg-warning">Global</span>
+                                    }
+                                    else
+                                    {
+                                        <code>@role.WorkstreamId</code>
+                                    }
+                                </td>
+                                <td>
+                                    @if (role.IsSystemRole)
+                                    {
+                                        <span class="badge bg-info">Yes</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">No</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (role.IsActive)
+                                    {
+                                        <span class="badge bg-success">Active</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Inactive</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (role.CreatedAt.HasValue)
+                                    {
+                                        @role.CreatedAt.Value.LocalDateTime.ToString("yyyy-MM-dd")
+                                        <br />
+                                        <small class="text-muted">by @(role.CreatedBy ?? "Unknown")</small>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a asp-action="Details" asp-route-id="@role.Id" class="btn btn-sm btn-info" title="Details">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a asp-action="Edit" asp-route-id="@role.Id" class="btn btn-sm btn-warning" title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        @if (!role.IsSystemRole)
+                                        {
+                                            <a asp-action="Delete" asp-route-id="@role.Id" class="btn btn-sm btn-danger" title="Delete">
+                                                <i class="bi bi-trash"></i>
+                                            </a>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="mt-3">
+                <p class="text-muted">
+                    Showing @Model.Count role(s)
+                </p>
+            </div>
+        }
+    </div>
+</div>

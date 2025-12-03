@@ -1,0 +1,146 @@
+@model UI.Modules.AccessControl.Models.AbacRuleGroupViewModel
+
+@{
+    ViewData["Title"] = "Edit Rule Group";
+}
+
+<h1>Edit Rule Group</h1>
+
+<hr />
+<div class="row">
+    <div class="col-md-8">
+        <form asp-action="Edit">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="WorkstreamId" />
+
+            <div class="mb-3">
+                <label asp-for="GroupName" class="form-label"></label>
+                <input asp-for="GroupName" class="form-control" />
+                <span asp-validation-for="GroupName" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Description" class="form-label"></label>
+                <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="ParentGroupId" class="form-label"></label>
+                <select asp-for="ParentGroupId" class="form-select" asp-items="@ViewBag.ParentGroups">
+                    <option value="">-- Top Level Group --</option>
+                </select>
+                <span asp-validation-for="ParentGroupId" class="text-danger"></span>
+                <div class="form-text">Optional parent group for hierarchical rule organization</div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="LogicalOperator" class="form-label"></label>
+                <select asp-for="LogicalOperator" class="form-select">
+                    <option value="AND">AND - All rules must pass</option>
+                    <option value="OR">OR - Any rule can pass</option>
+                </select>
+                <span asp-validation-for="LogicalOperator" class="text-danger"></span>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label asp-for="Resource" class="form-label"></label>
+                        <div class="input-group">
+                            <input asp-for="Resource" class="form-control" id="ResourceInput" placeholder="e.g., Loan, Claim" />
+                            <select class="form-select" id="ResourceSelect" style="max-width: 50%;">
+                                <option value="">-- Select Resource --</option>
+                                @if (ViewBag.AvailableResources != null)
+                                {
+                                    foreach (var resource in ViewBag.AvailableResources)
+                                    {
+                                        <option value="@resource">@resource</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                        <span asp-validation-for="Resource" class="text-danger"></span>
+                        <div class="form-text">Optional: Limit to specific resource type</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label asp-for="Action" class="form-label"></label>
+                        <input asp-for="Action" class="form-control" />
+                        <span asp-validation-for="Action" class="text-danger"></span>
+                        <div class="form-text">Optional: Limit to specific action</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label asp-for="Priority" class="form-label"></label>
+                        <input asp-for="Priority" class="form-control" type="number" />
+                        <span asp-validation-for="Priority" class="text-danger"></span>
+                        <div class="form-text">Lower numbers evaluated first</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <div class="form-check mt-4">
+                            <input asp-for="IsActive" class="form-check-input" />
+                            <label asp-for="IsActive" class="form-check-label"></label>
+                        </div>
+                        <div class="form-text">Inactive groups are not evaluated</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <button type="submit" class="btn btn-primary">Save</button>
+                <a asp-action="Index" class="btn btn-secondary">Back to List</a>
+            </div>
+        </form>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>Group Statistics</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-5">Child Groups:</dt>
+                    <dd class="col-sm-7">
+                        <span class="badge bg-primary">@Model.ChildGroupCount</span>
+                    </dd>
+
+                    <dt class="col-sm-5">Direct Rules:</dt>
+                    <dd class="col-sm-7">
+                        <span class="badge bg-success">@Model.RuleCount</span>
+                    </dd>
+
+                    <dt class="col-sm-5">Workstream:</dt>
+                    <dd class="col-sm-7">
+                        <code>@Model.WorkstreamId</code>
+                    </dd>
+                </dl>
+
+                <div class="alert alert-warning small mt-3">
+                    <strong>Note:</strong> Changes to this group will affect all child groups and rules.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        // Handle resource selection dropdown
+        document.getElementById('ResourceSelect').addEventListener('change', function() {
+            if (this.value) {
+                document.getElementById('ResourceInput').value = this.value;
+            }
+        });
+    </script>
+}

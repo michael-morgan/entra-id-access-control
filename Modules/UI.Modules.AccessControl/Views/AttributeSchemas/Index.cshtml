@@ -1,0 +1,153 @@
+@model IEnumerable<Api.Modules.AccessControl.Persistence.Entities.Authorization.AttributeSchema>
+
+@{
+    ViewData["Title"] = "Attribute Schemas";
+}
+
+<div class="row mb-3">
+    <div class="col-md-12">
+        <h2>@ViewData["Title"]</h2>
+        <p class="lead">Manage attribute schemas that define custom attributes for users, groups, and roles.</p>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-12">
+        <div class="alert alert-info">
+            <strong>Workstream:</strong> @ViewBag.SelectedWorkstream
+        </div>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-12">
+        <form asp-action="Index" method="get" class="form-inline">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label for="search" class="form-label">Search</label>
+                    <input type="text" name="search" id="search" class="form-control" placeholder="Search by name..." value="@ViewBag.Search" />
+                </div>
+                <div class="col-md-3">
+                    <label for="attributeLevel" class="form-label">Attribute Level</label>
+                    <select name="attributeLevel" id="attributeLevel" class="form-control">
+                        <option value="">All Levels</option>
+                        <option value="User" selected="@(ViewBag.AttributeLevel == "User")">User</option>
+                        <option value="Group" selected="@(ViewBag.AttributeLevel == "Group")">Group</option>
+                        <option value="Role" selected="@(ViewBag.AttributeLevel == "Role")">Role</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary">Filter</button>
+                    <a asp-action="Index" class="btn btn-secondary">Clear</a>
+                </div>
+                <div class="col-md-2 text-end">
+                    <a asp-action="Create" class="btn btn-success">Create New</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h4>Attribute Schemas (@Model.Count())</h4>
+            </div>
+            <div class="card-body">
+                @if (Model.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Level</th>
+                                    <th>Name</th>
+                                    <th>Display Name</th>
+                                    <th>Data Type</th>
+                                    <th>Required</th>
+                                    <th>Display Order</th>
+                                    <th>Active</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var schema in Model)
+                                {
+                                    <tr>
+                                        <td>
+                                            <span class="badge bg-secondary">@schema.AttributeLevel</span>
+                                        </td>
+                                        <td>
+                                            <code>@schema.AttributeName</code>
+                                        </td>
+                                        <td>@schema.AttributeDisplayName</td>
+                                        <td>
+                                            <span class="badge bg-info">@schema.DataType</span>
+                                        </td>
+                                        <td>
+                                            @if (schema.IsRequired)
+                                            {
+                                                <span class="badge bg-warning">Required</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">Optional</span>
+                                            }
+                                        </td>
+                                        <td>@schema.DisplayOrder</td>
+                                        <td>
+                                            @if (schema.IsActive)
+                                            {
+                                                <span class="badge bg-success">Active</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-danger">Inactive</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a asp-action="Details" asp-route-id="@schema.Id" class="btn btn-sm btn-info" title="Details">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                                <a asp-action="Edit" asp-route-id="@schema.Id" class="btn btn-sm btn-warning" title="Edit">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                                <a asp-action="Delete" asp-route-id="@schema.Id" class="btn btn-sm btn-danger" title="Delete">
+                                                    <i class="bi bi-trash"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-warning" role="alert">
+                        <strong>No attribute schemas found.</strong>
+                        @if (!string.IsNullOrWhiteSpace(ViewBag.Search) || !string.IsNullOrWhiteSpace(ViewBag.AttributeLevel))
+                        {
+                            <span>Try adjusting your filters or <a asp-action="Index">view all schemas</a>.</span>
+                        }
+                        else
+                        {
+                            <span>Get started by <a asp-action="Create">creating a new schema</a>.</span>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>

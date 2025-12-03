@@ -1,0 +1,109 @@
+@model Api.Modules.AccessControl.Persistence.Entities.Authorization.CasbinResource
+
+@{
+    ViewData["Title"] = "Resource Details";
+}
+
+<h2>Resource Details</h2>
+
+<div>
+    <h4>Casbin Resource Definition</h4>
+    <hr />
+    <dl class="row">
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.Id)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.Id)
+        </dd>
+
+        <dt class="col-sm-2">
+            Workstream
+        </dt>
+        <dd class="col-sm-10">
+            @if (Model.WorkstreamId == "*")
+            {
+                <span class="badge bg-secondary">Global (*)</span>
+            }
+            else
+            {
+                <span class="badge bg-primary">@Model.WorkstreamId</span>
+            }
+        </dd>
+
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.ResourcePattern)
+        </dt>
+        <dd class="col-sm-10">
+            <code>@Html.DisplayFor(model => model.ResourcePattern)</code>
+        </dd>
+
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.DisplayName)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.DisplayName)
+        </dd>
+
+        @if (!string.IsNullOrWhiteSpace(Model.Description))
+        {
+            <dt class="col-sm-2">
+                @Html.DisplayNameFor(model => model.Description)
+            </dt>
+            <dd class="col-sm-10">
+                @Html.DisplayFor(model => model.Description)
+            </dd>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Model.ParentResource))
+        {
+            <dt class="col-sm-2">
+                @Html.DisplayNameFor(model => model.ParentResource)
+            </dt>
+            <dd class="col-sm-10">
+                <code>@Html.DisplayFor(model => model.ParentResource)</code>
+            </dd>
+        }
+
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.CreatedAt)
+        </dt>
+        <dd class="col-sm-10">
+            @Model.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")
+        </dd>
+
+        @if (!string.IsNullOrWhiteSpace(Model.CreatedBy))
+        {
+            <dt class="col-sm-2">
+                @Html.DisplayNameFor(model => model.CreatedBy)
+            </dt>
+            <dd class="col-sm-10">
+                @Html.DisplayFor(model => model.CreatedBy)
+            </dd>
+        }
+
+        @if (Model.ModifiedAt.HasValue)
+        {
+            <dt class="col-sm-2">
+                @Html.DisplayNameFor(model => model.ModifiedAt)
+            </dt>
+            <dd class="col-sm-10">
+                @Model.ModifiedAt.Value.ToString("yyyy-MM-dd HH:mm:ss")
+            </dd>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Model.ModifiedBy))
+        {
+            <dt class="col-sm-2">
+                @Html.DisplayNameFor(model => model.ModifiedBy)
+            </dt>
+            <dd class="col-sm-10">
+                @Html.DisplayFor(model => model.ModifiedBy)
+            </dd>
+        }
+    </dl>
+</div>
+<div>
+    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">Edit</a>
+    <a asp-action="Index" class="btn btn-secondary">Back to List</a>
+</div>

@@ -1,0 +1,156 @@
+@model UI.Modules.AccessControl.Models.AttributeSchemaViewModel
+
+@{
+    ViewData["Title"] = "Edit Attribute Schema";
+}
+
+<div class="row mb-3">
+    <div class="col-md-12">
+        <h2>@ViewData["Title"]</h2>
+        <p class="lead">Edit an existing attribute schema.</p>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-12">
+        <div class="alert alert-info">
+            <strong>Workstream:</strong> @ViewBag.SelectedWorkstream
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <form asp-action="Edit" method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="WorkstreamId" />
+
+            <div class="card">
+                <div class="card-header">
+                    <h4>Schema Information</h4>
+                </div>
+                <div class="card-body">
+                    <div class="form-group mb-3">
+                        <label asp-for="AttributeLevel" class="control-label"></label>
+                        <select asp-for="AttributeLevel" class="form-control">
+                            <option value="">-- Select Level --</option>
+                            <option value="User">User</option>
+                            <option value="Group">Group</option>
+                            <option value="Role">Role</option>
+                        </select>
+                        <span asp-validation-for="AttributeLevel" class="text-danger"></span>
+                        <small class="form-text text-muted">The entity type this attribute applies to</small>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="AttributeName" class="control-label"></label>
+                        <input asp-for="AttributeName" class="form-control" />
+                        <span asp-validation-for="AttributeName" class="text-danger"></span>
+                        <small class="form-text text-muted">The JSON property name (PascalCase recommended)</small>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="AttributeDisplayName" class="control-label"></label>
+                        <input asp-for="AttributeDisplayName" class="form-control" />
+                        <span asp-validation-for="AttributeDisplayName" class="text-danger"></span>
+                        <small class="form-text text-muted">The friendly name displayed in the UI</small>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="DataType" class="control-label"></label>
+                        <select asp-for="DataType" class="form-control">
+                            <option value="">-- Select Data Type --</option>
+                            <option value="String">String</option>
+                            <option value="Number">Number</option>
+                            <option value="Boolean">Boolean</option>
+                            <option value="Date">Date</option>
+                            <option value="Array">Array</option>
+                            <option value="Object">Object</option>
+                        </select>
+                        <span asp-validation-for="DataType" class="text-danger"></span>
+                        <small class="form-text text-muted">The data type for validation and rendering</small>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input asp-for="IsRequired" class="form-check-input" type="checkbox" />
+                        <label asp-for="IsRequired" class="form-check-label"></label>
+                        <span asp-validation-for="IsRequired" class="text-danger"></span>
+                        <small class="form-text text-muted d-block">Check if this attribute must be provided</small>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="DefaultValue" class="control-label"></label>
+                        <input asp-for="DefaultValue" class="form-control" />
+                        <span asp-validation-for="DefaultValue" class="text-danger"></span>
+                        <small class="form-text text-muted">Default value for new entries (optional)</small>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="AllowedValuesInput" class="control-label"></label>
+                        <input asp-for="AllowedValuesInput" class="form-control" />
+                        <span asp-validation-for="AllowedValuesInput" class="text-danger"></span>
+                        <small class="form-text text-muted">Comma-separated list of allowed values (optional, for enumerated types)</small>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="Description" class="control-label"></label>
+                        <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                        <span asp-validation-for="Description" class="text-danger"></span>
+                        <small class="form-text text-muted">Optional description or help text</small>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="DisplayOrder" class="control-label"></label>
+                        <input asp-for="DisplayOrder" class="form-control" type="number" />
+                        <span asp-validation-for="DisplayOrder" class="text-danger"></span>
+                        <small class="form-text text-muted">Display order in forms (lower numbers appear first)</small>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input asp-for="IsActive" class="form-check-input" type="checkbox" />
+                        <label asp-for="IsActive" class="form-check-label"></label>
+                        <span asp-validation-for="IsActive" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            @if (Model.CreatedAt.HasValue || !string.IsNullOrWhiteSpace(Model.CreatedBy))
+            {
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5>Audit Information</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (Model.CreatedAt.HasValue)
+                        {
+                            <p><strong>Created:</strong> @Model.CreatedAt.Value.ToString("yyyy-MM-dd HH:mm:ss")</p>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Model.CreatedBy))
+                        {
+                            <p><strong>Created By:</strong> @Model.CreatedBy</p>
+                        }
+                        @if (Model.ModifiedAt.HasValue)
+                        {
+                            <p><strong>Last Modified:</strong> @Model.ModifiedAt.Value.ToString("yyyy-MM-dd HH:mm:ss")</p>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Model.ModifiedBy))
+                        {
+                            <p><strong>Modified By:</strong> @Model.ModifiedBy</p>
+                        }
+                    </div>
+                </div>
+            }
+
+            <div class="form-group mt-3">
+                <input type="submit" value="Save" class="btn btn-primary" />
+                <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-info">View Details</a>
+                <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
