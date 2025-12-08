@@ -4,7 +4,7 @@
 # Connection Test - Verify API and Token
 ################################################################################
 
-API_URL="${API_URL:-http://localhost:5163}"
+API_URL="${API_URL:-https://localhost:7015}"
 TOKEN="${ALICE_TOKEN}"
 
 echo "================================"

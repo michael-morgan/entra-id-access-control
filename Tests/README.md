@@ -26,7 +26,7 @@ Comprehensive test suite for Alice (Loans Officer + Senior Approver) covering al
 
 ### Prerequisites
 
-1. **API Running**: Ensure the DemoApi is running on `http://localhost:5163`
+1. **API Running**: Ensure the DemoApi is running on `https://localhost:7015`
 
    ```bash
    cd Modules/Api.Modules.DemoApi
@@ -52,8 +52,8 @@ Comprehensive test suite for Alice (Loans Officer + Senior Approver) covering al
 # Set the JWT token
 export ALICE_TOKEN="your-jwt-token-here"
 
-# Optional: Set custom API URL (default: http://localhost:5163)
-export API_URL="http://localhost:5163"
+# Optional: Set custom API URL (default: https://localhost:7015)
+export API_URL="https://localhost:7015"
 
 # Run the tests
 bash Tests/alice-comprehensive-tests.sh

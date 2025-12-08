@@ -1,12 +1,31 @@
 using Api.Modules.AccessControl.Interfaces;
 using Api.Modules.AccessControl.BusinessEvents;
 using Api.Modules.AccessControl.Persistence;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Identity.Web;
+using Microsoft.Identity.Web.UI;
+using UI.Modules.AccessControl.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure authentication with Entra ID and Graph API
+var initialScopes = builder.Configuration["DownstreamApi:Scopes"]?.Split(' ');
+
+builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
+    .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection("EntraId"))
+        .EnableTokenAcquisitionToCallDownstreamApi(initialScopes)
+            .AddMicrosoftGraph(builder.Configuration.GetSection("DownstreamApi"))
+            .AddSessionTokenCaches(); // Session-based token cache for POC/demo
+
+builder.Services.AddAuthorization(options =>
+{
+    options.FallbackPolicy = options.DefaultPolicy;
+});
+
 // Add services to the container.
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews()
+    .AddMicrosoftIdentityUI();
 
 // Add session support for workstream context
 builder.Services.AddDistributedMemoryCache();
@@ -23,6 +42,10 @@ builder.Services.AddDbContext<AccessControlDbContext>(options =>
 
 // Add business event query service
 builder.Services.AddScoped<IBusinessEventQueryService, BusinessEventQueryService>();
+
+// Add Graph API services
+builder.Services.AddScoped<GraphUserService>();
+builder.Services.AddScoped<GraphGroupService>();
 
 var app = builder.Build();
 
@@ -54,6 +77,7 @@ app.UseRouting();
 
 app.UseSession();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllerRoute(

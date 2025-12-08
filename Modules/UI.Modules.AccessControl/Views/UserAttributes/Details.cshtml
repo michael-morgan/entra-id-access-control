@@ -7,7 +7,7 @@
 <h2>User Attribute Details</h2>
 
 <div>
-    <h4>User Attributes for @Model.UserId</h4>
+    <h4>User Attributes for @ViewBag.UserDisplayName</h4>
     <hr />
     <dl class="row">
         <dt class="col-sm-3">
@@ -17,10 +17,12 @@
             @Html.DisplayFor(model => model.Id)
         </dd>
         <dt class="col-sm-3">
-            @Html.DisplayNameFor(model => model.UserId)
+            User
         </dt>
         <dd class="col-sm-9">
-            <code>@Html.DisplayFor(model => model.UserId)</code>
+            <strong>@ViewBag.UserDisplayName</strong>
+            <br />
+            <code class="small text-muted">@Model.UserId</code>
         </dd>
         <dt class="col-sm-3">
             @Html.DisplayNameFor(model => model.WorkstreamId)

@@ -1,5 +1,6 @@
 using Api.Modules.AccessControl.Persistence;
 using UI.Modules.AccessControl.Models;
+using UI.Modules.AccessControl.Services;
 
 using Api.Modules.AccessControl.Persistence.Entities.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,11 +14,19 @@ namespace UI.Modules.AccessControl.Controllers;
 public class PoliciesController : Controller
 {
     private readonly AccessControlDbContext _context;
+    private readonly GraphGroupService _graphGroupService;
+    private readonly GraphUserService _graphUserService;
     private readonly ILogger<PoliciesController> _logger;
 
-    public PoliciesController(AccessControlDbContext context, ILogger<PoliciesController> logger)
+    public PoliciesController(
+        AccessControlDbContext context,
+        GraphGroupService graphGroupService,
+        GraphUserService graphUserService,
+        ILogger<PoliciesController> logger)
     {
         _context = context;
+        _graphGroupService = graphGroupService;
+        _graphUserService = graphUserService;
         _logger = logger;
     }
 
@@ -46,9 +55,45 @@ public class PoliciesController : Controller
             .ThenBy(p => p.V0)
             .ToListAsync();
 
+        // Fetch display names for group/user IDs in V0 (for "g" policies, V0 is often a group GUID)
+        var potentialGroupIds = policies
+            .Where(p => p.PolicyType == "g" && !string.IsNullOrEmpty(p.V0))
+            .Select(p => p.V0)
+            .Where(v0 => Guid.TryParse(v0, out _)) // Only GUIDs
+            .Distinct()
+            .ToList();
+
+        Dictionary<string, string> displayNames = new();
+
+        try
+        {
+            // Try to fetch as groups first
+            var groups = await _graphGroupService.GetGroupsByIdsAsync(potentialGroupIds);
+            foreach (var kvp in groups)
+            {
+                displayNames[kvp.Key] = kvp.Value.DisplayName ?? kvp.Value.MailNickname ?? kvp.Key;
+            }
+
+            // For IDs not found as groups, try users
+            var notFoundIds = potentialGroupIds.Except(displayNames.Keys).ToList();
+            if (notFoundIds.Any())
+            {
+                var users = await _graphUserService.GetUsersByIdsAsync(notFoundIds);
+                foreach (var kvp in users)
+                {
+                    displayNames[kvp.Key] = kvp.Value.DisplayName ?? kvp.Value.UserPrincipalName ?? kvp.Key;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to fetch display names from Graph API for policy subjects");
+        }
+
         ViewBag.PolicyType = policyType;
         ViewBag.Search = search;
         ViewBag.SelectedWorkstream = selectedWorkstream;
+        ViewBag.DisplayNames = displayNames;
         ViewBag.PolicyTypes = await _context.CasbinPolicies
             .Where(p => p.WorkstreamId == selectedWorkstream || p.WorkstreamId == null)
             .Select(p => p.PolicyType)

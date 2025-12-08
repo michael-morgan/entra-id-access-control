@@ -61,6 +61,9 @@
         </tr>
     </thead>
     <tbody>
+@{
+    var displayNames = ViewBag.DisplayNames as Dictionary<string, string> ?? new Dictionary<string, string>();
+}
 @foreach (var item in Model) {
         <tr>
             <td><span class="badge bg-info">@Html.DisplayFor(modelItem => item.PolicyType)</span></td>
@@ -68,12 +71,24 @@
                 @if (item.PolicyType == "g")
                 {
                     <small class="text-muted">Group/Role:</small><br/>
+                    @if (displayNames.ContainsKey(item.V0))
+                    {
+                        <div>
+                            <strong>@displayNames[item.V0]</strong>
+                            <br />
+                            <code class="small text-muted">@item.V0</code>
+                        </div>
+                    }
+                    else
+                    {
+                        <code class="small">@item.V0</code>
+                    }
                 }
                 else
                 {
                     <small class="text-muted">Role:</small><br/>
+                    <code class="small">@item.V0</code>
                 }
-                <code class="small">@Html.DisplayFor(modelItem => item.V0)</code>
             </td>
             <td>
                 @if (item.PolicyType == "g")

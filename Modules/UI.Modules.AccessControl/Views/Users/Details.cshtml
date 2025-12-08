@@ -1,0 +1,201 @@
+@model UI.Modules.AccessControl.Models.UserDetailsViewModel
+
+@{
+    ViewData["Title"] = "User Details";
+}
+
+<h1>User Details</h1>
+
+<div class="mb-3">
+    <a asp-action="Index" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Back to List
+    </a>
+    <a asp-action="ManageRoles" asp-route-id="@Model.User.Id" class="btn btn-primary">
+        <i class="bi bi-shield-lock"></i> Manage Roles
+    </a>
+</div>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="row">
+    <!-- User Information from Entra ID -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-person-circle"></i> User Information (Entra ID)</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-4">Display Name</dt>
+                    <dd class="col-sm-8"><strong>@Model.User.DisplayName</strong></dd>
+
+                    <dt class="col-sm-4">User ID</dt>
+                    <dd class="col-sm-8"><code class="small">@Model.User.Id</code></dd>
+
+                    <dt class="col-sm-4">User Principal Name</dt>
+                    <dd class="col-sm-8"><code class="small">@Model.User.UserPrincipalName</code></dd>
+
+                    <dt class="col-sm-4">Email</dt>
+                    <dd class="col-sm-8">@Model.User.Mail</dd>
+
+                    <dt class="col-sm-4">Job Title</dt>
+                    <dd class="col-sm-8">@(Model.User.JobTitle ?? "-")</dd>
+
+                    <dt class="col-sm-4">Department</dt>
+                    <dd class="col-sm-8">@(Model.User.Department ?? "-")</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <!-- Group Memberships from Entra ID -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="bi bi-people"></i> Group Memberships (@Model.Groups.Count)</h5>
+            </div>
+            <div class="card-body">
+                @if (!Model.Groups.Any())
+                {
+                    <p class="text-muted">No group memberships found.</p>
+                }
+                else
+                {
+                    <div class="list-group">
+                        @foreach (var group in Model.Groups.OrderBy(g => g.DisplayName))
+                        {
+                            <div class="list-group-item">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">@group.DisplayName</h6>
+                                </div>
+                                @if (!string.IsNullOrEmpty(group.Description))
+                                {
+                                    <p class="mb-1 small text-muted">@group.Description</p>
+                                }
+                                <small class="text-muted"><code>@group.Id</code></small>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Role Assignments -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="bi bi-shield-lock"></i> Role Assignments (@Model.RoleAssignments.Count)</h5>
+            </div>
+            <div class="card-body">
+                @if (!Model.RoleAssignments.Any())
+                {
+                    <p class="text-muted">No role assignments found.</p>
+                    <p class="small">
+                        Roles are assigned via group memberships or direct user assignments. This user may not have any role mappings configured yet.
+                    </p>
+                }
+                else
+                {
+                    <ul class="list-unstyled">
+                        @foreach (var role in Model.RoleAssignments.OrderBy(r => r))
+                        {
+                            <li class="mb-2">
+                                <span class="badge bg-success">@role</span>
+                            </li>
+                        }
+                    </ul>
+                }
+                <div class="mt-3">
+                    <a asp-action="ManageRoles" asp-route-id="@Model.User.Id" class="btn btn-sm btn-outline-success">
+                        <i class="bi bi-gear"></i> Manage Roles
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Attributes (Local Database) -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header bg-warning">
+                <h5 class="mb-0"><i class="bi bi-tags"></i> User Attributes (@Model.UserAttributes.Count)</h5>
+            </div>
+            <div class="card-body">
+                @if (!Model.UserAttributes.Any())
+                {
+                    <p class="text-muted">No user-specific attributes configured.</p>
+                    <p class="small">
+                        User attributes can be used for ABAC (Attribute-Based Access Control) rules.
+                    </p>
+                    <a asp-controller="UserAttributes" asp-action="Create" asp-route-userId="@Model.User.Id" class="btn btn-sm btn-outline-warning">
+                        <i class="bi bi-plus-circle"></i> Add Attribute
+                    </a>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Workstream</th>
+                                    <th>Attributes</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var attr in Model.UserAttributes.OrderBy(a => a.WorkstreamId))
+                                {
+                                    <tr>
+                                        <td><span class="badge bg-secondary">@attr.WorkstreamId</span></td>
+                                        <td>
+                                            @if (!string.IsNullOrEmpty(attr.AttributesJson))
+                                            {
+                                                <code class="small">@attr.AttributesJson</code>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">-</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <a asp-controller="UserAttributes" asp-action="Edit" asp-route-id="@attr.Id" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-2">
+                        <a asp-controller="UserAttributes" asp-action="Create" asp-route-userId="@Model.User.Id" class="btn btn-sm btn-outline-warning">
+                            <i class="bi bi-plus-circle"></i> Add Attribute
+                        </a>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Auto-dismiss alerts after 5 seconds
+        setTimeout(function() {
+            var alerts = document.querySelectorAll('.alert-dismissible');
+            alerts.forEach(function(alert) {
+                var bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            });
+        }, 5000);
+    </script>
+}

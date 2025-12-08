@@ -21,7 +21,7 @@
                     <option value="g2">g2 (Resource Grouping)</option>
                 </select>
                 <span asp-validation-for="PolicyType" class="text-danger"></span>
-                <div class="form-text">p = permission policy, g = role grouping, g2 = resource grouping</div>
+                <div class="form-text">p = permission policy, g = role grouping (groups/users to roles), g2 = resource grouping</div>
             </div>
 
             <div class="mb-3">
@@ -40,7 +40,7 @@
                     </select>
                 </div>
                 <span asp-validation-for="V0" class="text-danger"></span>
-                <div class="form-text">Subject (user/role) for 'p' policies, or sub-role for 'g' policies</div>
+                <div class="form-text">Subject (role) for 'p' policies, or subject (group OID/user OID/sub-role) for 'g' policies</div>
             </div>
 
             <div class="mb-3">

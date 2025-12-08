@@ -16,7 +16,7 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Configuration
-API_URL="${API_URL:-http://localhost:5163}"
+API_URL="${API_URL:-https://localhost:7015}"
 TOKEN="${ALICE_TOKEN}"
 
 # Counters

@@ -24,16 +24,32 @@
 <table class="table table-striped table-hover">
     <thead>
         <tr>
-            <th>User ID</th>
+            <th>User</th>
             <th>Workstream ID</th>
             <th>Attributes Preview</th>
             <th>Actions</th>
         </tr>
     </thead>
     <tbody>
+@{
+    var userDisplayNames = ViewBag.UserDisplayNames as Dictionary<string, string> ?? new Dictionary<string, string>();
+}
 @foreach (var item in Model) {
         <tr>
-            <td><code>@Html.DisplayFor(modelItem => item.UserId)</code></td>
+            <td>
+                @if (userDisplayNames.ContainsKey(item.UserId))
+                {
+                    <div>
+                        <strong>@userDisplayNames[item.UserId]</strong>
+                        <br />
+                        <code class="small text-muted">@item.UserId</code>
+                    </div>
+                }
+                else
+                {
+                    <code>@item.UserId</code>
+                }
+            </td>
             <td>
                 @if (!string.IsNullOrEmpty(item.WorkstreamId))
                 {

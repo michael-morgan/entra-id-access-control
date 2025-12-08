@@ -1,0 +1,271 @@
+@model UI.Modules.AccessControl.Models.ManageRolesViewModel
+
+@{
+    ViewData["Title"] = "Manage Roles";
+}
+
+<h1>Manage Roles</h1>
+
+<div class="mb-3">
+    <a asp-action="Details" asp-route-id="@Model.User.Id" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Details
+    </a>
+    <a asp-action="Index" class="btn btn-outline-secondary">
+        <i class="bi bi-list"></i> All Users
+    </a>
+</div>
+
+<div class="alert alert-info">
+    <h5><i class="bi bi-info-circle"></i> About Role Management</h5>
+    <p class="mb-0">
+        Roles are typically assigned to <strong>groups or users</strong> in this system.
+        To grant a user access to a role, either add them to an Entra ID group with the desired role mapping, or create a direct user-to-role mapping in the
+        <a asp-controller="Policies" asp-action="Index" class="alert-link">Policies</a> section.
+    </p>
+</div>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-person-circle"></i> User Information</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-2">Name</dt>
+                    <dd class="col-sm-4"><strong>@Model.User.DisplayName</strong></dd>
+
+                    <dt class="col-sm-2">Email</dt>
+                    <dd class="col-sm-4">@Model.User.Mail</dd>
+
+                    <dt class="col-sm-2">User ID</dt>
+                    <dd class="col-sm-10"><code class="small">@Model.User.Id</code></dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Group Memberships -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="bi bi-people"></i> Group Memberships (@Model.Groups.Count)</h5>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted">
+                    Groups are managed in Entra ID. The groups below are read-only from Entra ID.
+                </p>
+                @if (!Model.Groups.Any())
+                {
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        This user is not a member of any groups. Add them to groups in Entra ID to grant role-based permissions.
+                    </div>
+                }
+                else
+                {
+                    <div class="list-group">
+                        @foreach (var group in Model.Groups.OrderBy(g => g.DisplayName))
+                        {
+                            <div class="list-group-item">
+                                <div class="d-flex w-100 justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="mb-1">@group.DisplayName</h6>
+                                        @if (!string.IsNullOrEmpty(group.Description))
+                                        {
+                                            <p class="mb-1 small">@group.Description</p>
+                                        }
+                                        <small class="text-muted"><code>@group.Id</code></small>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Current Role Assignments -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="bi bi-shield-lock"></i> Current Role Assignments</h5>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted">
+                    Roles are inherited from group memberships or assigned directly to users. To modify role assignments, update the group-to-role or user-to-role mappings in
+                    <a asp-controller="Policies" asp-action="Index">Policies</a>.
+                </p>
+
+                @if (!Model.CurrentRoleAssignments.Any())
+                {
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        No role assignments found. This user's groups do not have any role mappings configured.
+                    </div>
+                    <p class="small">
+                        To grant roles, configure group-to-role or user-to-role mappings in the
+                        <a asp-controller="Policies" asp-action="Index" class="alert-link">Policies</a> section.
+                    </p>
+                }
+                else
+                {
+                    @foreach (var workstreamRoles in Model.CurrentRoleAssignments.OrderBy(kvp => kvp.Key))
+                    {
+                        <div class="mb-3">
+                            <h6>
+                                <span class="badge bg-secondary">@workstreamRoles.Key</span>
+                            </h6>
+                            <ul class="list-unstyled ms-3">
+                                @foreach (var role in workstreamRoles.Value.Distinct().OrderBy(r => r))
+                                {
+                                    <li class="mb-1">
+                                        <i class="bi bi-check-circle-fill text-success"></i>
+                                        <strong>@role</strong>
+                                    </li>
+                                }
+                            </ul>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Available Roles by Workstream -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0"><i class="bi bi-list-check"></i> Available Roles by Workstream</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">
+                    These are all the roles configured in the system. To assign a role to this user,
+                    either add them to a group that has the desired role mapping, or create a direct user-to-role mapping.
+                </p>
+
+                @if (!Model.AvailableRoles.Any())
+                {
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        No roles configured yet. Define roles in the
+                        <a asp-controller="Policies" asp-action="Index" class="alert-link">Policies</a> section.
+                    </div>
+                }
+                else
+                {
+                    <div class="accordion" id="rolesAccordion">
+                        @for (int i = 0; i < Model.Workstreams.Count; i++)
+                        {
+                            var workstream = Model.Workstreams[i];
+                            var roles = Model.AvailableRoles.ContainsKey(workstream) ? Model.AvailableRoles[workstream] : new List<string>();
+                            var userHasRoles = Model.CurrentRoleAssignments.ContainsKey(workstream);
+                            var isExpanded = i == 0;
+
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="heading@(i)">
+                                    <button class="accordion-button @(isExpanded ? "" : "collapsed")" type="button" data-bs-toggle="collapse" data-bs-target="#collapse@(i)" aria-expanded="@(isExpanded ? "true" : "false")" aria-controls="collapse@(i)">
+                                        <strong>@workstream</strong>
+                                        <span class="badge bg-info ms-2">@roles.Count role(s)</span>
+                                        @if (userHasRoles)
+                                        {
+                                            <span class="badge bg-success ms-2">
+                                                <i class="bi bi-check-circle"></i> User has roles
+                                            </span>
+                                        }
+                                    </button>
+                                </h2>
+                                <div id="collapse@(i)" class="accordion-collapse collapse @(isExpanded ? "show" : "")" aria-labelledby="heading@(i)" data-bs-parent="#rolesAccordion">
+                                    <div class="accordion-body">
+                                        @if (!roles.Any())
+                                        {
+                                            <p class="text-muted">No roles defined for this workstream.</p>
+                                        }
+                                        else
+                                        {
+                                            <div class="row">
+                                                @foreach (var role in roles.OrderBy(r => r))
+                                                {
+                                                    var hasThisRole = userHasRoles && Model.CurrentRoleAssignments[workstream].Contains(role);
+                                                    <div class="col-md-4 mb-2">
+                                                        <div class="card @(hasThisRole ? "border-success" : "")">
+                                                            <div class="card-body py-2 px-3">
+                                                                @if (hasThisRole)
+                                                                {
+                                                                    <i class="bi bi-check-circle-fill text-success"></i>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <i class="bi bi-circle text-muted"></i>
+                                                                }
+                                                                <strong class="ms-1">@role</strong>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-4">
+    <div class="card border-primary">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-lightbulb"></i> How to Assign Roles</h5>
+        </div>
+        <div class="card-body">
+            <p class="mb-2"><strong>Option 1: Group-Based Assignment (Recommended for most users)</strong></p>
+            <ol>
+                <li>Ensure the user is a member of the appropriate Entra ID group</li>
+                <li>Go to <a asp-controller="Policies" asp-action="Index">Policies</a></li>
+                <li>Create or update a group-to-role mapping (g policy) that maps the group OID to the desired role</li>
+                <li>The user will inherit the role through their group membership</li>
+            </ol>
+            <p class="mb-2 mt-3"><strong>Option 2: Direct User Assignment (For exceptions or temporary access)</strong></p>
+            <ol>
+                <li>Go to <a asp-controller="Policies" asp-action="Index">Policies</a></li>
+                <li>Create a user-to-role mapping (g policy) that maps the user's OID directly to the desired role</li>
+                <li>The user will have the role assigned directly, independent of group membership</li>
+            </ol>
+            <p class="mb-0">
+                <a asp-controller="Policies" asp-action="Index" class="btn btn-primary">
+                    <i class="bi bi-gear"></i> Manage Policies
+                </a>
+            </p>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Auto-dismiss alerts after 5 seconds
+        setTimeout(function() {
+            var alerts = document.querySelectorAll('.alert-dismissible');
+            alerts.forEach(function(alert) {
+                var bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            });
+        }, 5000);
+    </script>
+}

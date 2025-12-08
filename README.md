@@ -200,8 +200,17 @@ dotnet user-secrets set "EntraId:ClientSecret" "your-client-secret" --project Mo
 #### UI.Modules.AccessControl
 
 ```bash
+# Database connection
 dotnet user-secrets set "ConnectionStrings:AccessControlDb" "Data Source=(localdb)\\MSSQLLocalDB;Initial Catalog=AccessControl;Integrated Security=True" --project Modules/UI.Modules.AccessControl
+
+# Entra ID configuration (for admin UI authentication and Graph API access)
+dotnet user-secrets set "EntraId:Domain" "yourtenant.onmicrosoft.com" --project Modules/UI.Modules.AccessControl
+dotnet user-secrets set "EntraId:TenantId" "your-tenant-id" --project Modules/UI.Modules.AccessControl
+dotnet user-secrets set "EntraId:ClientId" "your-client-id" --project Modules/UI.Modules.AccessControl
+dotnet user-secrets set "EntraId:ClientSecret" "your-client-secret" --project Modules/UI.Modules.AccessControl
 ```
+
+**Note**: The UI admin application requires Microsoft Graph API permissions to display user and group information from Entra ID. See the [Graph API Setup](#graph-api-setup) section below for required permissions.
 
 ### 3. Create and Seed the Database
 
@@ -227,8 +236,8 @@ dotnet run
 
 API will be available at:
 
-- **HTTP**: http://localhost:5163
-- **Swagger**: http://localhost:5163/swagger
+- **HTTPS**: https://localhost:7015
+- **Swagger**: https://localhost:7015/swagger
 
 #### Admin UI (Frontend)
 
@@ -237,7 +246,7 @@ cd Modules/UI.Modules.AccessControl
 dotnet run
 ```
 
-UI will be available at the port shown in the console output (http://localhost:5146).
+UI will be available at https://localhost:7006.
 
 ## Running Tests
 
@@ -245,7 +254,7 @@ The test suite validates all RBAC and ABAC authorization scenarios.
 
 ### Prerequisites
 
-1. **API Running**: Start the DemoApi on port 5163
+1. **API Running**: Start the DemoApi on https://localhost:7015
 2. **Valid JWT Token**: Obtain Alice's JWT token from Entra ID (Using Postman or your choice)
 3. **Database Seeded**: Ensure test data exists (see step 3 above)
 
@@ -311,16 +320,79 @@ See [Tests/README.md](Tests/README.md) for detailed test documentation.
 
 Your Entra ID app registration should be configured with:
 
-1. **Redirect URIs**: Configure for your application URLs
-2. **API Permissions**:
+1. **Redirect URIs**:
+   - **Web**: `https://localhost:7015/signin-oidc` (DemoApi)
+   - **Web**: `https://localhost:7006/signin-oidc` (UI Admin)
+
+2. **API Permissions** (for DemoApi):
    - Microsoft Graph: `User.Read`, `GroupMember.Read.All`
-3. **Token Configuration**:
+
+3. **API Permissions** (for UI Admin with Graph API):
+   - Microsoft Graph: `User.Read`
+   - Microsoft Graph: `User.Read.All` (Delegated) - *Requires admin consent*
+   - Microsoft Graph: `Group.Read.All` (Delegated) - *Requires admin consent*
+   - Microsoft Graph: `GroupMember.Read.All` (Delegated) - *Requires admin consent*
+
+4. **Grant Admin Consent**:
+   - After adding API permissions, click "Grant admin consent for [Tenant]"
+   - This is required for the delegated Graph API permissions
+
+5. **Token Configuration**:
    - Add optional claims: `groups`
    - Enable ID tokens
-4. **App Roles** (optional): Define application-specific roles
-5. **Groups**: Create groups for role assignment:
+
+6. **App Roles** (optional): Define application-specific roles
+
+7. **Groups**: Create groups for role assignment:
    - `Loans-Officers` → `f17daf4a-2998-46f8-82d3-b049e0a8cd35`
    - `Loans-SeniorApprovers` → `045c925c-df54-41b7-8280-999dae20c742`
+
+### Graph API Setup
+
+The UI admin application integrates with Microsoft Graph API to provide a comprehensive user management interface.
+
+**Features enabled by Graph API integration:**
+
+- **Users Management**: View all Entra ID users with search capability
+- **User Details**: Display user profile, group memberships, role assignments, and local attributes
+- **Group Information**: Show human-readable group names instead of GUIDs
+- **Role Associations**: Visualize how users inherit roles through group memberships
+
+**What is NOT modified:**
+
+- No changes to Entra ID (read-only access)
+- User/group creation is done in Azure Portal
+- Role assignments are managed locally via Casbin policies
+
+**Implementation Details:**
+
+- Uses delegated permissions (user context maintained for audit)
+- 15-minute caching for frequently accessed data
+- Automatic pagination for large result sets
+- Built-in retry logic for throttling
+
+**Entra ID App Registration Configuration:**
+
+The UI admin application requires the following configuration in your Entra ID app registration:
+
+1. **Redirect URI**: `https://localhost:7006/signin-oidc` (Type: Web)
+2. **Authentication Flow**: Authorization Code Flow (DO NOT enable "Implicit grant and hybrid flows")
+3. **API Permissions** (Delegated):
+   - `User.Read` (sign-in and read user profile)
+   - `User.Read.All` (read all users' full profiles)
+   - `Group.Read.All` (read all groups)
+   - `GroupMember.Read.All` (read group memberships)
+
+**Why no implicit/hybrid flows?**
+- Authorization Code Flow is more secure and modern
+- Tokens are exchanged server-side, never exposed to browser
+- Supports refresh tokens for long-running sessions
+
+**Key Files:**
+
+- [GraphUserService.cs](Modules/UI.Modules.AccessControl/Services/GraphUserService.cs) - User operations
+- [GraphGroupService.cs](Modules/UI.Modules.AccessControl/Services/GraphGroupService.cs) - Group operations
+- [UsersController.cs](Modules/UI.Modules.AccessControl/Controllers/UsersController.cs) - User management UI
 
 ## Database Schema
 

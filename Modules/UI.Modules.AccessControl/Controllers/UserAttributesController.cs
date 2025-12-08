@@ -1,5 +1,6 @@
 using Api.Modules.AccessControl.Persistence;
 using UI.Modules.AccessControl.Models;
+using UI.Modules.AccessControl.Services;
 
 using Api.Modules.AccessControl.Persistence.Entities.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,11 +14,16 @@ namespace UI.Modules.AccessControl.Controllers;
 public class UserAttributesController : Controller
 {
     private readonly AccessControlDbContext _context;
+    private readonly GraphUserService _graphUserService;
     private readonly ILogger<UserAttributesController> _logger;
 
-    public UserAttributesController(AccessControlDbContext context, ILogger<UserAttributesController> logger)
+    public UserAttributesController(
+        AccessControlDbContext context,
+        GraphUserService graphUserService,
+        ILogger<UserAttributesController> logger)
     {
         _context = context;
+        _graphUserService = graphUserService;
         _logger = logger;
     }
 
@@ -37,8 +43,26 @@ public class UserAttributesController : Controller
             .OrderBy(ua => ua.UserId)
             .ToListAsync();
 
+        // Fetch user display names from Entra ID
+        var userIds = userAttributes.Select(ua => ua.UserId).Distinct().ToList();
+        Dictionary<string, string> userDisplayNames = new();
+
+        try
+        {
+            var users = await _graphUserService.GetUsersByIdsAsync(userIds);
+            userDisplayNames = users.ToDictionary(
+                kvp => kvp.Key,
+                kvp => kvp.Value.DisplayName ?? kvp.Value.UserPrincipalName ?? kvp.Key
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to fetch user display names from Graph API. Showing IDs only.");
+        }
+
         ViewBag.Search = search;
         ViewBag.SelectedWorkstream = selectedWorkstream;
+        ViewBag.UserDisplayNames = userDisplayNames;
 
         return View(userAttributes);
     }
@@ -57,6 +81,18 @@ public class UserAttributesController : Controller
         if (userAttribute == null)
         {
             return NotFound();
+        }
+
+        // Fetch user display name from Entra ID
+        try
+        {
+            var user = await _graphUserService.GetUserByIdAsync(userAttribute.UserId);
+            ViewBag.UserDisplayName = user?.DisplayName ?? user?.UserPrincipalName ?? userAttribute.UserId;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to fetch user display name for {UserId}", userAttribute.UserId);
+            ViewBag.UserDisplayName = userAttribute.UserId;
         }
 
         return View(userAttribute);

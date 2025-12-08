@@ -1,5 +1,6 @@
 using Api.Modules.AccessControl.Persistence;
 using UI.Modules.AccessControl.Models;
+using UI.Modules.AccessControl.Services;
 
 using Api.Modules.AccessControl.Persistence.Entities.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,11 +14,16 @@ namespace UI.Modules.AccessControl.Controllers;
 public class GroupAttributesController : Controller
 {
     private readonly AccessControlDbContext _context;
+    private readonly GraphGroupService _graphGroupService;
     private readonly ILogger<GroupAttributesController> _logger;
 
-    public GroupAttributesController(AccessControlDbContext context, ILogger<GroupAttributesController> logger)
+    public GroupAttributesController(
+        AccessControlDbContext context,
+        GraphGroupService graphGroupService,
+        ILogger<GroupAttributesController> logger)
     {
         _context = context;
+        _graphGroupService = graphGroupService;
         _logger = logger;
     }
 
@@ -39,6 +45,38 @@ public class GroupAttributesController : Controller
             .OrderBy(ga => ga.GroupName ?? ga.GroupId)
             .ToListAsync();
 
+        // Fetch and sync group display names from Entra ID
+        var groupIds = groupAttributes.Select(ga => ga.GroupId).Distinct().ToList();
+        try
+        {
+            var groups = await _graphGroupService.GetGroupsByIdsAsync(groupIds);
+            bool updated = false;
+
+            foreach (var groupAttr in groupAttributes)
+            {
+                if (groups.TryGetValue(groupAttr.GroupId, out var group))
+                {
+                    var displayName = group.DisplayName ?? group.MailNickname ?? groupAttr.GroupId;
+                    if (groupAttr.GroupName != displayName)
+                    {
+                        groupAttr.GroupName = displayName;
+                        _context.Update(groupAttr);
+                        updated = true;
+                    }
+                }
+            }
+
+            if (updated)
+            {
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Updated group display names from Entra ID");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to fetch group display names from Graph API");
+        }
+
         ViewBag.Search = search;
         ViewBag.SelectedWorkstream = selectedWorkstream;
 
@@ -59,6 +97,27 @@ public class GroupAttributesController : Controller
         if (groupAttribute == null)
         {
             return NotFound();
+        }
+
+        // Fetch and sync group display name from Entra ID
+        try
+        {
+            var group = await _graphGroupService.GetGroupByIdAsync(groupAttribute.GroupId);
+            if (group != null)
+            {
+                var displayName = group.DisplayName ?? group.MailNickname ?? groupAttribute.GroupId;
+                if (groupAttribute.GroupName != displayName)
+                {
+                    groupAttribute.GroupName = displayName;
+                    _context.Update(groupAttribute);
+                    await _context.SaveChangesAsync();
+                    _logger.LogInformation("Updated group display name for {GroupId}", groupAttribute.GroupId);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to fetch group display name for {GroupId}", groupAttribute.GroupId);
         }
 
         return View(groupAttribute);
