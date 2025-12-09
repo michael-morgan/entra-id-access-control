@@ -114,7 +114,7 @@
         <form asp-action="Delete" method="post">
             <input type="hidden" asp-for="Id" />
             <button type="submit" class="btn btn-danger">Confirm Delete</button>
-            <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-info">View Details</a>
+            <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-primary">View Details</a>
             <a asp-action="Index" class="btn btn-secondary">Cancel</a>
         </form>
     </div>

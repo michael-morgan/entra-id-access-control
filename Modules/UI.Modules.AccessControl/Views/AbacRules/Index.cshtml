@@ -23,7 +23,7 @@
     <div class="col-md-12">
         <form asp-action="Index" method="get" class="form-inline">
             <div class="row g-3">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <input type="text" name="search" value="@ViewBag.Search" class="form-control" placeholder="Search by rule name..." />
                 </div>
                 <div class="col-md-3">
@@ -42,7 +42,7 @@
                         <option value="">All Rule Groups</option>
                     </select>
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-3">
                     <button type="submit" class="btn btn-primary">Filter</button>
                     <a asp-action="Index" class="btn btn-secondary">Clear</a>
                 </div>
@@ -53,7 +53,7 @@
 
 <div class="row mb-3">
     <div class="col-md-12">
-        <a asp-action="Create" class="btn btn-success">Create New Rule</a>
+        <a asp-action="Create" class="btn btn-primary">Create New Rule</a>
     </div>
 </div>
 
@@ -112,7 +112,7 @@
                             </td>
                             <td>
                                 <div class="btn-group" role="group">
-                                    <a asp-action="Details" asp-route-id="@rule.Id" class="btn btn-sm btn-info" title="Details">
+                                    <a asp-action="Details" asp-route-id="@rule.Id" class="btn btn-sm btn-primary" title="Details">
                                         <i class="bi bi-eye"></i>
                                     </a>
                                     <a asp-action="Edit" asp-route-id="@rule.Id" class="btn btn-sm btn-warning" title="Edit">

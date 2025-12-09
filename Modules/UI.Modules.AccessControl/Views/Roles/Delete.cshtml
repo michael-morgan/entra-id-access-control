@@ -127,7 +127,7 @@
             {
                 <button type="submit" class="btn btn-danger">Delete</button>
                 <a asp-action="Index" class="btn btn-secondary">Cancel</a>
-                <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-info">View Details</a>
+                <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-primary">View Details</a>
             }
         </form>
     </div>
@@ -165,7 +165,7 @@
                 </ol>
 
                 <div class="mt-3">
-                    <a asp-controller="Policies" asp-action="Index" asp-route-search="@Model.RoleName" class="btn btn-sm btn-info w-100">
+                    <a asp-controller="Policies" asp-action="Index" asp-route-search="@Model.RoleName" class="btn btn-sm btn-primary w-100">
                         View Related Policies
                     </a>
                 </div>

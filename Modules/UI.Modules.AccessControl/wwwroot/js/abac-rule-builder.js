@@ -88,7 +88,7 @@ class AbacRuleBuilder {
     renderAttributeComparisonForm() {
         const html = `
             <div class="card">
-                <div class="card-header bg-info text-white">
+                <div class="card-header">
                     <h6 class="mb-0">Attribute Comparison Configuration</h6>
                 </div>
                 <div class="card-body">
@@ -171,7 +171,7 @@ class AbacRuleBuilder {
     renderPropertyMatchForm() {
         const html = `
             <div class="card">
-                <div class="card-header bg-info text-white">
+                <div class="card-header">
                     <h6 class="mb-0">Property Match Configuration</h6>
                 </div>
                 <div class="card-body">
@@ -269,7 +269,7 @@ class AbacRuleBuilder {
     renderValueRangeForm() {
         const html = `
             <div class="card">
-                <div class="card-header bg-info text-white">
+                <div class="card-header">
                     <h6 class="mb-0">Value Range Configuration</h6>
                 </div>
                 <div class="card-body">
@@ -363,7 +363,7 @@ class AbacRuleBuilder {
     renderTimeRestrictionForm() {
         const html = `
             <div class="card">
-                <div class="card-header bg-info text-white">
+                <div class="card-header">
                     <h6 class="mb-0">Time Restriction Configuration</h6>
                 </div>
                 <div class="card-body">
@@ -436,7 +436,7 @@ class AbacRuleBuilder {
     renderLocationRestrictionForm() {
         const html = `
             <div class="card">
-                <div class="card-header bg-info text-white">
+                <div class="card-header">
                     <h6 class="mb-0">Location Restriction Configuration</h6>
                 </div>
                 <div class="card-body">
@@ -475,7 +475,7 @@ class AbacRuleBuilder {
     renderAttributeValueForm() {
         const html = `
             <div class="card">
-                <div class="card-header bg-info text-white">
+                <div class="card-header">
                     <h6 class="mb-0">Attribute Value Configuration</h6>
                 </div>
                 <div class="card-body">

@@ -1,0 +1,824 @@
+/* ============================================================================
+   Access Control Admin - Brand Theme
+   ============================================================================
+
+   This stylesheet defines the comprehensive brand theme for the Access Control
+   Admin application. It establishes color palette, typography, component styling,
+   and interactive states according to brand guidelines.
+
+   Organization:
+   1. CSS Custom Properties (Variables)
+   2. Typography & Fonts
+   3. Base & Layout
+   4. Header & Navigation
+   5. Components (Cards, Buttons, Forms, Tables, Badges, Alerts)
+   6. Interactive States
+   7. Utilities
+   ============================================================================ */
+
+/* ============================================================================
+   1. CSS Custom Properties (Variables)
+   ============================================================================ */
+:root {
+    /* Brand Colors */
+    --brand-primary: #0058a4;
+    --brand-primary-dark: #002f58;
+    --brand-primary-rgb: 0, 88, 164;
+
+    /* Grayscale Palette */
+    --color-black: #000000;
+    --color-charcoal: #222222;
+    --color-graphite: #333333;
+    --color-gray: #555555;
+    --color-ash: #777777;
+    --color-smoke: #d9d9d9;
+    --color-dust: #efefef;
+    --color-fog: #eeeeee;
+    --color-white: #ffffff;
+
+    /* Status Colors (Use ONLY for alerts and status indicators) */
+    --status-success: #408334;
+    --status-info: #0058a4;
+    --status-warning: #f8d44c;
+    --status-danger: #cb1f17;
+
+    /* Typography */
+    --font-family-base: 'open_sansregular', 'Open Sans', Helvetica, Arial, Tahoma, sans-serif;
+    --font-size-base: 1rem;
+    --line-height-base: 1.6;
+
+    --font-size-h1: 2rem;          /* 32px */
+    --line-height-h1: 2rem;        /* 32px */
+    --font-size-h2: 1.625rem;      /* 26px */
+    --line-height-h2: 1.625rem;    /* 26px */
+    --font-size-h3: 1.25rem;       /* 20px */
+    --line-height-h3: 1.25rem;     /* 20px */
+    --font-size-h4: 1rem;          /* 16px */
+    --line-height-h4: 1rem;        /* 16px */
+    --font-size-paragraph: 1rem;   /* 16px */
+    --line-height-paragraph: 1rem; /* 16px */
+    --font-size-small: 0.875rem;   /* 14px */
+    --line-height-small: 0.875rem; /* 14px */
+    --font-size-link: 1rem;        /* 16px */
+    --line-height-link: 1rem;      /* 16px */
+
+    /* Spacing */
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+    --spacing-xxl: 3rem;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.15);
+
+    /* Borders */
+    --border-radius-sm: 0.25rem;
+    --border-radius-md: 0.375rem;
+    --border-radius-lg: 0.5rem;
+
+    /* Transitions */
+    --transition-fast: 150ms ease-in-out;
+    --transition-base: 250ms ease-in-out;
+    --transition-slow: 350ms ease-in-out;
+
+    /* Bootstrap Override Variables */
+    --bs-primary: var(--brand-primary);
+    --bs-primary-rgb: var(--brand-primary-rgb);
+    --bs-link-color: var(--brand-primary);
+    --bs-link-hover-color: var(--brand-primary-dark);
+    --bs-body-font-family: var(--font-family-base);
+    --bs-body-font-size: var(--font-size-paragraph);
+    --bs-body-line-height: var(--line-height-base);
+}
+
+/* ============================================================================
+   2. Typography & Fonts
+   ============================================================================ */
+
+/* Base Typography */
+body {
+    font-family: var(--font-family-base);
+    font-size: var(--font-size-paragraph);
+    line-height: var(--line-height-paragraph);
+    color: var(--color-charcoal);
+    background-color: var(--color-white);
+}
+
+/* Headings */
+h1, .h1 {
+    font-size: var(--font-size-h1);
+    line-height: var(--line-height-h1);
+    font-weight: 700;
+    color: var(--color-charcoal);
+    margin-bottom: var(--spacing-lg);
+}
+
+h2, .h2 {
+    font-size: var(--font-size-h2);
+    line-height: var(--line-height-h2);
+    font-weight: 700;
+    color: var(--color-charcoal);
+    margin-bottom: var(--spacing-md);
+}
+
+h3, .h3 {
+    font-size: var(--font-size-h3);
+    line-height: var(--line-height-h3);
+    font-weight: 700;
+    color: var(--color-charcoal);
+    margin-bottom: var(--spacing-md);
+}
+
+h4, .h4 {
+    font-size: var(--font-size-h4);
+    line-height: var(--line-height-h4);
+    font-weight: 700;
+    color: var(--color-charcoal);
+    margin-bottom: var(--spacing-sm);
+}
+
+h5, .h5 {
+    font-size: var(--font-size-link);
+    line-height: var(--line-height-link);
+    font-weight: 700;
+    color: var(--color-charcoal);
+    margin-bottom: var(--spacing-sm);
+}
+
+h6, .h6 {
+    font-size: var(--font-size-small);
+    line-height: var(--line-height-small);
+    font-weight: 700;
+    color: var(--color-gray);
+    margin-bottom: var(--spacing-sm);
+}
+
+/* Paragraph & Text */
+p {
+    font-size: var(--font-size-paragraph);
+    line-height: var(--line-height-paragraph);
+    margin-bottom: var(--spacing-md);
+}
+
+small, .small {
+    font-size: var(--font-size-small);
+    line-height: var(--line-height-small);
+}
+
+/* Links */
+a {
+    color: var(--brand-primary);
+    text-decoration: underline;
+    font-size: var(--font-size-link);
+    line-height: var(--line-height-link);
+    transition: color var(--transition-fast), background-color var(--transition-fast);
+}
+
+a:hover,
+a:focus {
+    color: var(--brand-primary-dark);
+    background-color: var(--status-warning);
+    text-decoration: underline;
+}
+
+/* Text Utilities */
+.text-muted {
+    color: var(--color-ash) !important;
+}
+
+.text-brand {
+    color: var(--brand-primary) !important;
+}
+
+/* ============================================================================
+   3. Base & Layout
+   ============================================================================ */
+
+/* Main Content Area */
+main {
+    background-color: var(--color-white);
+    min-height: calc(100vh - 200px);
+}
+
+.container {
+    max-width: 1200px;
+}
+
+/* ============================================================================
+   4. Header & Navigation
+   ============================================================================ */
+
+/* Header Container */
+.app-header {
+    background-color: var(--color-white);
+    padding: 0;
+    padding-bottom: var(--spacing-md);
+}
+
+.app-header-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* Logo & Brand */
+.app-brand {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    text-decoration: none;
+}
+
+.app-brand-logo {
+    height: 40px;
+    width: auto;
+}
+
+.app-brand-separator {
+    width: 1px;
+    height: 30px;
+    background-color: var(--color-smoke);
+}
+
+.app-brand-name {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--brand-primary);
+    margin: 0;
+}
+
+.app-brand:hover .app-brand-name {
+    color: var(--brand-primary-dark);
+}
+
+/* User Info */
+.app-user-info {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.app-user-name {
+    font-weight: 600;
+}
+
+#userDropdown {
+    font-size: 1.25rem;
+    text-decoration: none;
+}
+
+/* Navigation Bar */
+.app-nav {
+    background-color: var(--color-dust);
+    border-top: 1px solid var(--color-smoke);
+    border-bottom: 1px solid var(--color-smoke);
+    padding: 0;
+}
+
+.app-nav .navbar-nav {
+    gap: var(--spacing-xs);
+}
+
+.app-nav .nav-link {
+    color: var(--color-charcoal);
+    padding: var(--spacing-md) var(--spacing-lg);
+    font-weight: 500;
+    text-decoration: none;
+    border-bottom: 0.25rem solid transparent;
+    transition: background-color var(--transition-fast),
+                border-color var(--transition-fast),
+                color var(--transition-fast);
+}
+
+.app-nav .nav-link:hover,
+.app-nav .nav-link:focus {
+    background-color: var(--status-warning);
+    color: var(--brand-primary-dark);
+    text-decoration: underline;
+}
+
+.app-nav .nav-link.active,
+.app-nav .nav-item.active > .nav-link {
+    background-color: var(--color-white);
+    border-bottom-color: var(--brand-primary);
+    color: var(--color-charcoal);
+    font-weight: 600;
+}
+
+/* Dropdown Menus */
+.app-nav .dropdown-menu {
+    border: 1px solid var(--color-smoke);
+    box-shadow: var(--shadow-md);
+    padding: var(--spacing-sm) 0;
+}
+
+.app-nav .dropdown-item {
+    color: var(--color-charcoal);
+    padding: var(--spacing-sm) var(--spacing-lg);
+    transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.app-nav .dropdown-item:hover,
+.app-nav .dropdown-item:focus {
+    background-color: var(--status-warning);
+    color: var(--brand-primary-dark);
+    text-decoration: underline;
+}
+
+.app-nav .dropdown-header {
+    color: var(--color-gray);
+    font-weight: 700;
+    font-size: var(--font-size-small);
+    padding: var(--spacing-sm) var(--spacing-lg);
+}
+
+.app-nav .dropdown-divider {
+    border-color: var(--color-smoke);
+}
+
+/* Mobile Navigation Toggle */
+.navbar-toggler {
+    border-color: var(--color-smoke);
+    color: var(--color-charcoal);
+}
+
+.navbar-toggler:focus {
+    box-shadow: 0 0 0 0.2rem rgba(0, 88, 164, 0.25);
+}
+
+/* ============================================================================
+   5. Components
+   ============================================================================ */
+
+/* ----- Cards ----- */
+.card {
+    background-color: rgba(245, 245, 245, 0.25);
+    border: 1px solid var(--color-smoke);
+    border-left: 4px solid var(--brand-primary);
+    border-radius: 0;
+    box-shadow: var(--shadow-sm);
+    margin-bottom: var(--spacing-lg);
+}
+
+.card-header {
+    background-color: transparent;
+    border-bottom: 1px solid var(--color-smoke);
+    color: var(--color-charcoal);
+    font-weight: 700;
+    padding: var(--spacing-md) var(--spacing-lg);
+}
+
+/* Override Bootstrap's card-header border-radius */
+.card-header:first-child {
+    border-radius: 0 !important;
+}
+
+.card-body {
+    padding: var(--spacing-md);
+}
+
+.card-title {
+    color: var(--color-charcoal);
+    font-weight: 700;
+    margin-bottom: var(--spacing-md);
+}
+
+.card-text {
+    color: var(--color-gray);
+}
+
+/* Card Variants - Remove colorful backgrounds, use subtle accents */
+.card-primary {
+    border-left-color: var(--brand-primary);
+}
+
+.card-neutral {
+    border-left-color: var(--color-smoke);
+}
+
+/* ----- Buttons ----- */
+.btn {
+    font-size: var(--font-size-link);
+    font-weight: 600;
+    padding: var(--spacing-sm) var(--spacing-lg);
+    border-radius: var(--border-radius-sm);
+    transition: background-color var(--transition-fast),
+                border-color var(--transition-fast),
+                color var(--transition-fast),
+                box-shadow var(--transition-fast);
+    text-decoration: none;
+}
+
+/* Primary Button (Brand) */
+.btn-primary {
+    background-color: var(--brand-primary);
+    border-color: var(--brand-primary);
+    color: var(--color-white);
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+    background-color: var(--brand-primary-dark);
+    border-color: var(--brand-primary-dark);
+    color: var(--color-white);
+}
+
+.btn-primary:active {
+    background-color: var(--brand-primary-dark);
+    border-color: var(--brand-primary-dark);
+}
+
+/* Secondary Button (Grayscale) */
+.btn-secondary {
+    background-color: var(--color-gray);
+    border-color: var(--color-gray);
+    color: var(--color-white);
+}
+
+.btn-secondary:hover,
+.btn-secondary:focus {
+    background-color: var(--color-graphite);
+    border-color: var(--color-graphite);
+}
+
+/* Outline Button */
+.btn-outline-primary {
+    color: var(--brand-primary);
+    border-color: var(--brand-primary);
+    background-color: transparent;
+}
+
+.btn-outline-primary:hover,
+.btn-outline-primary:focus {
+    background-color: var(--brand-primary);
+    border-color: var(--brand-primary);
+    color: var(--color-white);
+}
+
+/* Status Buttons (Use ONLY for actual status actions) */
+.btn-success {
+    background-color: var(--status-success);
+    border-color: var(--status-success);
+    color: var(--color-white);
+}
+
+.btn-success:hover,
+.btn-success:focus {
+    background-color: #356b2a;
+    border-color: #356b2a;
+}
+
+.btn-danger {
+    background-color: var(--status-danger);
+    border-color: var(--status-danger);
+    color: var(--color-white);
+}
+
+.btn-danger:hover,
+.btn-danger:focus {
+    background-color: #a31912;
+    border-color: #a31912;
+}
+
+.btn-warning {
+    background-color: var(--status-warning);
+    border-color: var(--status-warning);
+    color: var(--color-charcoal);
+}
+
+.btn-warning:hover,
+.btn-warning:focus {
+    background-color: #e6c143;
+    border-color: #e6c143;
+}
+
+/* Light/Link Buttons */
+.btn-light {
+    background-color: var(--color-dust);
+    border-color: var(--color-smoke);
+    color: var(--color-charcoal);
+}
+
+.btn-light:hover,
+.btn-light:focus {
+    background-color: var(--color-fog);
+}
+
+.btn-link {
+    color: var(--brand-primary);
+    text-decoration: underline;
+}
+
+.btn-link:hover,
+.btn-link:focus {
+    color: var(--brand-primary-dark);
+    background-color: var(--status-warning);
+}
+
+/* Button Sizes */
+.btn-sm {
+    font-size: var(--font-size-small);
+    padding: var(--spacing-xs) var(--spacing-md);
+}
+
+.btn-lg {
+    font-size: var(--font-size-h4);
+    padding: var(--spacing-md) var(--spacing-xl);
+}
+
+/* ----- Forms ----- */
+.form-label {
+    color: var(--color-charcoal);
+    font-weight: 600;
+    margin-bottom: var(--spacing-xs);
+}
+
+.form-control,
+.form-select {
+    border: 1px solid var(--color-smoke);
+    border-radius: var(--border-radius-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: var(--font-size-link);
+    color: var(--color-charcoal);
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 0.2rem rgba(0, 88, 164, 0.25);
+    outline: 0;
+}
+
+.form-control::placeholder {
+    color: var(--color-ash);
+}
+
+.form-control:disabled,
+.form-select:disabled {
+    background-color: var(--color-fog);
+    color: var(--color-ash);
+    cursor: not-allowed;
+}
+
+.form-text {
+    color: var(--color-ash);
+    font-size: var(--font-size-small);
+    margin-top: var(--spacing-xs);
+}
+
+.form-group {
+    padding: 0.5rem 0;
+}
+
+/* Form Validation */
+.form-control.is-invalid,
+.form-select.is-invalid {
+    border-color: var(--status-danger);
+}
+
+.form-control.is-valid,
+.form-select.is-valid {
+    border-color: var(--status-success);
+}
+
+.invalid-feedback {
+    color: var(--status-danger);
+    font-size: var(--font-size-small);
+}
+
+.valid-feedback {
+    color: var(--status-success);
+    font-size: var(--font-size-small);
+}
+
+/* ----- Tables ----- */
+.table {
+    color: var(--color-charcoal);
+}
+
+.table thead th {
+    background-color: var(--color-dust);
+    border-bottom: 2px solid var(--color-smoke);
+    color: var(--color-charcoal);
+    font-weight: 700;
+}
+
+.table tbody td {
+    border-bottom: 1px solid var(--color-fog);
+}
+
+.table-hover tbody tr:hover {
+    background-color: var(--color-fog);
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(239, 239, 239, 0.5);
+}
+
+/* ----- Badges ----- */
+.badge {
+    font-size: var(--font-size-small);
+    font-weight: 600;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--border-radius-sm);
+}
+
+/* Use grayscale for informational badges */
+.badge.bg-secondary {
+    background-color: var(--color-gray) !important;
+}
+
+.badge.bg-light {
+    background-color: var(--color-dust) !important;
+    color: var(--color-charcoal) !important;
+    border: 1px solid var(--color-smoke);
+}
+
+/* Status badges */
+.badge.bg-success {
+    background-color: var(--status-success) !important;
+}
+
+.badge.bg-danger {
+    background-color: var(--status-danger) !important;
+}
+
+.badge.bg-warning {
+    background-color: var(--status-warning) !important;
+    color: var(--color-charcoal) !important;
+}
+
+.badge.bg-info,
+.badge.bg-primary {
+    background-color: var(--brand-primary) !important;
+}
+
+/* ----- Alerts ----- */
+.alert {
+    border-radius: 0;
+    border-left-width: 4px;
+    padding: var(--spacing-md) var(--spacing-lg);
+}
+
+.alert-success {
+    background-color: rgba(64, 131, 52, 0.1);
+    border-color: var(--status-success);
+    border-left-color: var(--status-success);
+    color: var(--status-success);
+}
+
+.alert-info {
+    background-color: rgba(0, 88, 164, 0.1);
+    border-color: var(--brand-primary);
+    border-left-color: var(--brand-primary);
+    color: var(--brand-primary);
+}
+
+.alert-warning {
+    background-color: rgba(248, 212, 76, 0.2);
+    border-color: var(--status-warning);
+    border-left-color: var(--status-warning);
+    color: #856404;
+}
+
+.alert-danger {
+    background-color: rgba(203, 31, 23, 0.1);
+    border-color: var(--status-danger);
+    border-left-color: var(--status-danger);
+    color: var(--status-danger);
+}
+
+/* ============================================================================
+   6. Interactive States
+   ============================================================================ */
+
+/* Focus States */
+*:focus,
+*:focus-visible {
+    outline: 2px solid var(--brand-primary);
+    outline-offset: 2px;
+}
+
+button:focus,
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+    outline: 2px solid var(--brand-primary);
+    outline-offset: 2px;
+}
+
+/* Hover States (Global) */
+.hover-highlight:hover {
+    background-color: var(--status-warning);
+    color: var(--brand-primary-dark);
+}
+
+/* Disabled States */
+.disabled,
+[disabled] {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ============================================================================
+   7. Utilities
+   ============================================================================ */
+
+/* Spacing Utilities */
+.mt-brand {
+    margin-top: var(--spacing-lg);
+}
+
+.mb-brand {
+    margin-bottom: var(--spacing-lg);
+}
+
+.p-brand {
+    padding: var(--spacing-lg);
+}
+
+/* Border Utilities */
+.border-brand {
+    border-color: var(--brand-primary) !important;
+}
+
+.border-grayscale {
+    border-color: var(--color-smoke) !important;
+}
+
+/* Background Utilities */
+.bg-brand {
+    background-color: var(--brand-primary) !important;
+    color: var(--color-white) !important;
+}
+
+.bg-dust {
+    background-color: var(--color-dust) !important;
+}
+
+/* Box Shadow Utilities */
+.shadow-brand {
+    box-shadow: var(--shadow-md);
+}
+
+/* Text Utilities */
+.fw-semibold {
+    font-weight: 600;
+}
+
+/* ============================================================================
+   8. Responsive Adjustments
+   ============================================================================ */
+
+@media (max-width: 768px) {
+    :root {
+        --font-size-h1: 2rem;
+        --font-size-h2: 1.75rem;
+        --font-size-h3: 1.25rem;
+        --font-size-paragraph: 1rem;
+    }
+
+    .app-header-wrapper {
+        flex-direction: column;
+        gap: var(--spacing-md);
+    }
+
+    .app-user-info {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .card-body {
+        padding: var(--spacing-md);
+    }
+}
+
+/* ============================================================================
+   9. Print Styles
+   ============================================================================ */
+
+@media print {
+    .app-nav,
+    .app-user-info,
+    .navbar-toggler,
+    .btn,
+    .dropdown {
+        display: none !important;
+    }
+
+    body {
+        color: var(--color-black);
+        background-color: var(--color-white);
+    }
+
+    .card {
+        border: 1px solid var(--color-black);
+        box-shadow: none;
+    }
+}

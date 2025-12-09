@@ -27,7 +27,7 @@
     <!-- User Information from Entra ID -->
     <div class="col-md-6 mb-4">
         <div class="card">
-            <div class="card-header bg-primary text-white">
+            <div class="card-header">
                 <h5 class="mb-0"><i class="bi bi-person-circle"></i> User Information (Entra ID)</h5>
             </div>
             <div class="card-body">
@@ -57,7 +57,7 @@
     <!-- Group Memberships from Entra ID -->
     <div class="col-md-6 mb-4">
         <div class="card">
-            <div class="card-header bg-info text-white">
+            <div class="card-header">
                 <h5 class="mb-0"><i class="bi bi-people"></i> Group Memberships (@Model.Groups.Count)</h5>
             </div>
             <div class="card-body">
@@ -92,7 +92,7 @@
     <!-- Role Assignments -->
     <div class="col-md-6 mb-4">
         <div class="card">
-            <div class="card-header bg-success text-white">
+            <div class="card-header">
                 <h5 class="mb-0"><i class="bi bi-shield-lock"></i> Role Assignments (@Model.RoleAssignments.Count)</h5>
             </div>
             <div class="card-body">
@@ -115,7 +115,7 @@
                     </ul>
                 }
                 <div class="mt-3">
-                    <a asp-action="ManageRoles" asp-route-id="@Model.User.Id" class="btn btn-sm btn-outline-success">
+                    <a asp-action="ManageRoles" asp-route-id="@Model.User.Id" class="btn btn-sm btn-outline-primary">
                         <i class="bi bi-gear"></i> Manage Roles
                     </a>
                 </div>
@@ -126,7 +126,7 @@
     <!-- User Attributes (Local Database) -->
     <div class="col-md-6 mb-4">
         <div class="card">
-            <div class="card-header bg-warning">
+            <div class="card-header">
                 <h5 class="mb-0"><i class="bi bi-tags"></i> User Attributes (@Model.UserAttributes.Count)</h5>
             </div>
             <div class="card-body">
@@ -136,7 +136,7 @@
                     <p class="small">
                         User attributes can be used for ABAC (Attribute-Based Access Control) rules.
                     </p>
-                    <a asp-controller="UserAttributes" asp-action="Create" asp-route-userId="@Model.User.Id" class="btn btn-sm btn-outline-warning">
+                    <a asp-controller="UserAttributes" asp-action="Create" asp-route-userId="@Model.User.Id" class="btn btn-sm btn-outline-primary">
                         <i class="bi bi-plus-circle"></i> Add Attribute
                     </a>
                 }
@@ -177,7 +177,7 @@
                         </table>
                     </div>
                     <div class="mt-2">
-                        <a asp-controller="UserAttributes" asp-action="Create" asp-route-userId="@Model.User.Id" class="btn btn-sm btn-outline-warning">
+                        <a asp-controller="UserAttributes" asp-action="Create" asp-route-userId="@Model.User.Id" class="btn btn-sm btn-outline-primary">
                             <i class="bi bi-plus-circle"></i> Add Attribute
                         </a>
                     </div>

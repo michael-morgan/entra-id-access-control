@@ -1,16 +1,14 @@
-html {
-  font-size: 14px;
-}
+/* ============================================================================
+   Site Utilities - Page-specific styles and layout adjustments
+   ============================================================================
 
-@media (min-width: 768px) {
-  html {
-    font-size: 16px;
-  }
-}
+   This file contains page-specific utility styles that supplement the main
+   theme.css. Global brand styling is defined in theme.css.
+   ============================================================================ */
 
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
-}
+/* ============================================================================
+   Layout Adjustments
+   ============================================================================ */
 
 html {
   position: relative;
@@ -21,46 +19,33 @@ body {
   margin-bottom: 60px;
 }
 
-/* ABAC Rule Builder Styles */
+/* ============================================================================
+   ABAC Rule Builder - Dynamic Form Styles
+   ============================================================================
+
+   These styles support the JavaScript-driven ABAC rule builder interface.
+   Many of these styles are dynamically referenced by abac-rule-builder.js
+   and should not be removed.
+   ============================================================================ */
+
 .abac-rule-builder {
   margin-top: 1rem;
 }
 
-.abac-rule-builder .card {
-  border-radius: 0.5rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.abac-rule-builder .card-header {
-  font-weight: 600;
-  border-bottom: 2px solid rgba(0, 0, 0, 0.125);
-}
-
+/* Form label styling for rule builder */
 .abac-rule-builder .form-label {
   font-weight: 500;
   margin-bottom: 0.25rem;
-  color: #495057;
 }
 
+/* Disabled/readonly state for form controls */
 .abac-rule-builder .form-control:disabled,
 .abac-rule-builder .form-control[readonly] {
-  background-color: #e9ecef;
+  background-color: var(--color-fog, #eeeeee);
   opacity: 1;
 }
 
-.abac-rule-builder .alert-warning {
-  border-left: 4px solid #ffc107;
-}
-
-.abac-rule-builder .alert-info {
-  border-left: 4px solid #0dcaf0;
-}
-
-.abac-rule-builder .btn-sm {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.875rem;
-}
-
+/* Dynamic value list layout (used in JavaScript form generation) */
 .abac-rule-builder .value-list-item {
   display: flex;
   align-items: center;
@@ -76,6 +61,7 @@ body {
   flex-shrink: 0;
 }
 
+/* Time input group layout (used in time-based rules) */
 .abac-rule-builder .time-input-group {
   display: flex;
   gap: 0.5rem;
@@ -87,6 +73,7 @@ body {
   min-width: 60px;
 }
 
+/* Checkbox group layout (used in multi-select rule options) */
 .abac-rule-builder .checkbox-group {
   display: flex;
   flex-wrap: wrap;
@@ -97,18 +84,27 @@ body {
   margin-bottom: 0;
 }
 
+/* Help text for rule configuration guidance */
 .abac-rule-builder .help-text {
   font-size: 0.875rem;
-  color: #6c757d;
+  color: var(--color-ash, #777777);
   margin-top: 0.25rem;
 }
 
+/* Section divider within rule builder forms */
 .abac-rule-builder .section-divider {
-  border-top: 1px solid #dee2e6;
+  border-top: 1px solid var(--color-smoke, #d9d9d9);
   margin: 1.5rem 0;
 }
 
-/* Ensure all dropdown selects have visible down arrow */
+/* ============================================================================
+   Form Select Dropdown Arrow
+   ============================================================================
+
+   Custom dropdown arrow for all select elements to ensure consistent
+   cross-browser appearance. This overrides browser default select styling.
+   ============================================================================ */
+
 .form-select,
 .form-control[type="select"],
 select.form-control,

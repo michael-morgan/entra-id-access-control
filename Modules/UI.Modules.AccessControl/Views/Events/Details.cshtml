@@ -77,7 +77,7 @@
             @if (!string.IsNullOrWhiteSpace(Model.BusinessProcessId))
             {
                 <code>@Model.BusinessProcessId</code>
-                <a asp-action="ProcessTimeline" asp-route-id="@Model.BusinessProcessId" class="btn btn-sm btn-info ms-2">View Process Timeline</a>
+                <a asp-action="ProcessTimeline" asp-route-id="@Model.BusinessProcessId" class="btn btn-sm btn-primary ms-2">View Process Timeline</a>
             }
             else
             {
