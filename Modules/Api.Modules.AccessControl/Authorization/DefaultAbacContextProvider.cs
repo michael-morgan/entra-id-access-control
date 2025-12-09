@@ -68,38 +68,24 @@ public class DefaultAbacContextProvider : IAbacContextProvider
 
         var context = new AbacContext
         {
-            // User attributes
+            // User identity (from JWT)
             UserId = userId,
             UserDisplayName = user.FindFirst("name")?.Value,
             UserEmail = user.FindFirst("email")?.Value,
             Roles = roleValues,
             Groups = groupIds,
 
-            // Merged attributes (User > Role > Group precedence)
-            Department = mergedAttributes.GetString("Department"),
-            Region = mergedAttributes.GetString("Region"),
-            ApprovalLimit = mergedAttributes.GetDecimal("ApprovalLimit"),
-            ManagementLevel = mergedAttributes.GetInt("ManagementLevel"),
+            // Dynamic user attributes (merged from User/Role/Group attributes)
+            UserAttributes = mergedAttributes,
 
-            // Resource attributes (extracted from entity if provided)
-            ResourceOwnerId = GetResourceProperty<string>(resourceEntity, "OwnerId")
-                ?? GetResourceProperty<string>(resourceEntity, "CreatedBy"),
-            ResourceRegion = GetResourceProperty<string>(resourceEntity, "Region"),
-            ResourceStatus = GetResourceProperty<string>(resourceEntity, "Status"),
-            ResourceValue = GetResourceProperty<decimal?>(resourceEntity, "RequestedAmount")
-                ?? GetResourceProperty<decimal?>(resourceEntity, "Amount")
-                ?? GetResourceProperty<decimal?>(resourceEntity, "Value"),
-            ResourceClassification = GetResourceProperty<string>(resourceEntity, "Classification"),
-            ResourceCreatedAt = GetResourceProperty<DateTimeOffset?>(resourceEntity, "CreatedAt"),
+            // Dynamic resource attributes (extracted from entity if provided)
             ResourceAttributes = resourceAttributes,
 
-            // Environment attributes
+            // Environment attributes (computed at runtime)
             RequestTime = now,
             ClientIpAddress = clientIp,
             IsBusinessHours = IsWithinBusinessHours(now),
-            IsInternalNetwork = IsInternalNetwork(clientIp),
-
-            CustomAttributes = new Dictionary<string, object>(mergedAttributes)
+            IsInternalNetwork = IsInternalNetwork(clientIp)
         };
 
         return context;
@@ -188,28 +174,6 @@ public class DefaultAbacContextProvider : IAbacContextProvider
         }
 
         return result;
-    }
-
-    private static T? GetResourceProperty<T>(object? resource, string propertyName)
-    {
-        if (resource == null)
-            return default;
-
-        var property = resource.GetType().GetProperty(propertyName);
-        if (property == null)
-            return default;
-
-        var value = property.GetValue(resource);
-        if (value == null)
-            return default;
-
-        // Handle enum-to-string conversion for generic string properties
-        if (typeof(T) == typeof(string) && value.GetType().IsEnum)
-        {
-            return (T)(object)value.ToString()!;
-        }
-
-        return (T)value;
     }
 
     private bool IsWithinBusinessHours(DateTimeOffset time)

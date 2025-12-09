@@ -196,11 +196,13 @@ public class GraphUserService
                 SecurityEnabledOnly = false // Include all groups, not just security groups
             };
 
-            var groupIds = await _graphClient.Users[userId]
+            var response = await _graphClient.Users[userId]
                 .GetMemberGroups
-                .PostAsync(request);
+                .PostAsGetMemberGroupsPostResponseAsync(request);
 
-            return groupIds?.Value?.ToList() ?? new List<string>();
+            var groupIds = response?.Value;
+
+            return groupIds?.ToList() ?? new List<string>();
         }
         catch (ServiceException ex)
         {

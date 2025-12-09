@@ -341,15 +341,15 @@ public class GenericAbacEvaluator : IWorkstreamAbacEvaluator
         if (config.RootElement.TryGetProperty("resourceClassification", out var classificationElement))
         {
             var requiredClassification = classificationElement.GetString();
-            var resourceStatus = context.ResourceStatus;
+            var resourceClassification = context.GetResourceAttribute<string>("Classification");
 
             // Only apply time restriction if resource matches the classification
             if (!string.IsNullOrEmpty(requiredClassification) &&
-                !requiredClassification.Equals(resourceStatus, StringComparison.OrdinalIgnoreCase))
+                !requiredClassification.Equals(resourceClassification, StringComparison.OrdinalIgnoreCase))
             {
                 // Resource doesn't match classification, rule doesn't apply
-                _logger.LogDebug("Rule '{RuleName}' skipped: resource status '{ResourceStatus}' doesn't match required classification '{RequiredClassification}'",
-                    rule.RuleName, resourceStatus, requiredClassification);
+                _logger.LogDebug("Rule '{RuleName}' skipped: resource classification '{ResourceClassification}' doesn't match required classification '{RequiredClassification}'",
+                    rule.RuleName, resourceClassification, requiredClassification);
                 return AbacEvaluationResult.Allow($"Rule '{rule.RuleName}' passed (classification mismatch)");
             }
 
@@ -438,24 +438,31 @@ public class GenericAbacEvaluator : IWorkstreamAbacEvaluator
         return AbacEvaluationResult.Allow($"Rule '{rule.RuleName}' passed");
     }
 
+    /// <summary>
+    /// Gets a value from the ABAC context by property name.
+    /// Supports dynamic attribute lookup from UserAttributes and ResourceAttributes dictionaries.
+    /// </summary>
     private object? GetContextValue(AbacContext context, string? propertyName)
     {
         if (string.IsNullOrEmpty(propertyName))
             return null;
 
+        // Try user attributes first
+        if (context.UserAttributes.TryGetValue(propertyName, out var userValue))
+            return userValue;
+
+        // Try resource attributes
+        if (context.ResourceAttributes.TryGetValue(propertyName, out var resourceValue))
+            return resourceValue;
+
+        // Try environment attributes (hardcoded - computed at runtime, not from database)
         return propertyName switch
         {
-            "ApprovalLimit" => context.ApprovalLimit,
-            "Amount" or "ResourceValue" => context.ResourceValue,
-            "Region" => context.Region,
-            "ResourceRegion" => context.ResourceRegion,
-            "ManagementLevel" => context.ManagementLevel,
-            "Department" => context.Department,
-            "ResourceStatus" => context.ResourceStatus,
             "IsBusinessHours" => context.IsBusinessHours,
-            _ => context.CustomAttributes?.ContainsKey(propertyName) == true
-                ? context.CustomAttributes[propertyName]
-                : null
+            "IsInternalNetwork" => context.IsInternalNetwork,
+            "RequestTime" => context.RequestTime,
+            "ClientIpAddress" => context.ClientIpAddress,
+            _ => null
         };
     }
 

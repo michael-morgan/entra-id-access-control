@@ -1,15 +1,17 @@
 using System.Text.Json;
+using Api.Modules.AccessControl.Extensions;
 
 namespace Api.Modules.AccessControl.Models;
 
 /// <summary>
 /// Runtime context for ABAC evaluation.
 /// Built by IAbacContextProvider before authorization checks.
+/// Uses dynamic attribute dictionaries populated from AttributeSchemas and database JSON.
 /// </summary>
 public sealed record AbacContext
 {
     // ═══════════════════════════════════════════════════════════
-    // USER ATTRIBUTES (from JWT + enrichment)
+    // USER IDENTITY (from JWT)
     // ═══════════════════════════════════════════════════════════
 
     /// <summary>User's unique identifier (oid claim)</summary>
@@ -27,45 +29,29 @@ public sealed record AbacContext
     /// <summary>Group memberships from Entra ID</summary>
     public required string[] Groups { get; init; }
 
-    /// <summary>User's department (from directory or custom claim)</summary>
-    public string? Department { get; init; }
-
-    /// <summary>User's region/territory</summary>
-    public string? Region { get; init; }
-
-    /// <summary>Maximum amount user can approve</summary>
-    public decimal? ApprovalLimit { get; init; }
-
-    /// <summary>User's management level (for hierarchy)</summary>
-    public int? ManagementLevel { get; init; }
-
     // ═══════════════════════════════════════════════════════════
-    // RESOURCE ATTRIBUTES (from entity being accessed)
+    // DYNAMIC USER ATTRIBUTES (from database JSON)
     // ═══════════════════════════════════════════════════════════
 
-    /// <summary>Owner of the resource</summary>
-    public string? ResourceOwnerId { get; init; }
+    /// <summary>
+    /// Dynamic user attributes loaded from UserAttributes/GroupAttributes/RoleAttributes tables.
+    /// Merged with precedence: User > Role > Group.
+    /// Examples: ApprovalLimit, ManagementLevel, Department, Region
+    /// </summary>
+    public Dictionary<string, object> UserAttributes { get; init; } = new();
 
-    /// <summary>Region the resource belongs to</summary>
-    public string? ResourceRegion { get; init; }
+    // ═══════════════════════════════════════════════════════════
+    // DYNAMIC RESOURCE ATTRIBUTES (from entity properties)
+    // ═══════════════════════════════════════════════════════════
 
-    /// <summary>Current status of the resource</summary>
-    public string? ResourceStatus { get; init; }
-
-    /// <summary>Monetary value (for approval limits)</summary>
-    public decimal? ResourceValue { get; init; }
-
-    /// <summary>Sensitivity classification</summary>
-    public string? ResourceClassification { get; init; }
-
-    /// <summary>Date resource was created</summary>
-    public DateTimeOffset? ResourceCreatedAt { get; init; }
-
-    /// <summary>Dynamic resource attributes from entity properties</summary>
+    /// <summary>
+    /// Dynamic resource attributes extracted from entity via reflection.
+    /// Examples: OwnerId, Region, Status, RequestedAmount, Classification
+    /// </summary>
     public Dictionary<string, object> ResourceAttributes { get; init; } = new();
 
     // ═══════════════════════════════════════════════════════════
-    // ENVIRONMENT ATTRIBUTES (runtime context)
+    // ENVIRONMENT ATTRIBUTES (computed at runtime)
     // ═══════════════════════════════════════════════════════════
 
     /// <summary>Current request timestamp</summary>
@@ -81,11 +67,14 @@ public sealed record AbacContext
     public bool IsInternalNetwork { get; init; }
 
     // ═══════════════════════════════════════════════════════════
-    // EXTENSION POINT
+    // HELPER METHODS (type-safe access to dynamic attributes)
     // ═══════════════════════════════════════════════════════════
 
-    /// <summary>Custom attributes for workstream-specific ABAC</summary>
-    public Dictionary<string, object> CustomAttributes { get; init; } = new();
+    /// <summary>Gets a typed value from user attributes dictionary</summary>
+    public T? GetUserAttribute<T>(string key) => UserAttributes.Get<T>(key);
+
+    /// <summary>Gets a typed value from resource attributes dictionary</summary>
+    public T? GetResourceAttribute<T>(string key) => ResourceAttributes.Get<T>(key);
 
     /// <summary>Serializes context to JSON for Casbin evaluation</summary>
     public string ToJson() => JsonSerializer.Serialize(this);

@@ -6,6 +6,7 @@ namespace Api.Modules.DemoApi.Authorization;
 /// <summary>
 /// Example ABAC evaluator for the Loans workstream.
 /// Implements complex approval logic based on loan amount, user approval limit, and business rules.
+/// Uses dynamic attribute access from AbacContext dictionaries.
 /// </summary>
 public class LoansAbacEvaluator : IWorkstreamAbacEvaluator
 {
@@ -27,18 +28,26 @@ public class LoansAbacEvaluator : IWorkstreamAbacEvaluator
 
     private AbacEvaluationResult EvaluateLoanApproval(AbacContext context)
     {
+        // Extract dynamic attributes using helper methods
+        var userApprovalLimit = context.GetUserAttribute<decimal?>("ApprovalLimit");
+        var loanAmount = context.GetResourceAttribute<decimal?>("RequestedAmount")
+            ?? context.GetResourceAttribute<decimal?>("Amount")
+            ?? context.GetResourceAttribute<decimal?>("Value");
+        var userRegion = context.GetUserAttribute<string>("Region");
+        var loanRegion = context.GetResourceAttribute<string>("Region");
+        var managementLevel = context.GetUserAttribute<int?>("ManagementLevel");
+        var loanStatus = context.GetResourceAttribute<string>("Status");
+
         Console.WriteLine($"[LOANS ABAC] EvaluateLoanApproval called");
-        Console.WriteLine($"[LOANS ABAC] ApprovalLimit: {context.ApprovalLimit}");
-        Console.WriteLine($"[LOANS ABAC] ResourceValue: {context.ResourceValue}");
-        Console.WriteLine($"[LOANS ABAC] Region: {context.Region}");
-        Console.WriteLine($"[LOANS ABAC] ResourceRegion: {context.ResourceRegion}");
-        Console.WriteLine($"[LOANS ABAC] ManagementLevel: {context.ManagementLevel}");
+        Console.WriteLine($"[LOANS ABAC] ApprovalLimit: {userApprovalLimit}");
+        Console.WriteLine($"[LOANS ABAC] LoanAmount: {loanAmount}");
+        Console.WriteLine($"[LOANS ABAC] UserRegion: {userRegion}");
+        Console.WriteLine($"[LOANS ABAC] LoanRegion: {loanRegion}");
+        Console.WriteLine($"[LOANS ABAC] ManagementLevel: {managementLevel}");
         Console.WriteLine($"[LOANS ABAC] IsBusinessHours: {context.IsBusinessHours}");
-        Console.WriteLine($"[LOANS ABAC] ResourceStatus: {context.ResourceStatus}");
+        Console.WriteLine($"[LOANS ABAC] LoanStatus: {loanStatus}");
 
         // Get user's approval limit
-        var userApprovalLimit = context.ApprovalLimit;
-
         if (userApprovalLimit == null || userApprovalLimit <= 0)
         {
             Console.WriteLine($"[LOANS ABAC] DENY: No approval limit");
@@ -46,9 +55,6 @@ public class LoansAbacEvaluator : IWorkstreamAbacEvaluator
                 "User has no approval limit configured",
                 "You do not have permission to approve loans. Contact your administrator.");
         }
-
-        // Get loan amount from resource
-        var loanAmount = context.ResourceValue;
 
         // If entity data is not available (controller-level check), return null to defer to RBAC only
         if (loanAmount == null || loanAmount <= 0)
@@ -69,8 +75,6 @@ public class LoansAbacEvaluator : IWorkstreamAbacEvaluator
         // Additional business rule: High-value loans (>$500k) require senior management
         if (loanAmount > 500_000)
         {
-            var managementLevel = context.ManagementLevel;
-
             if (managementLevel == null || managementLevel < 3)
             {
                 Console.WriteLine($"[LOANS ABAC] DENY: High-value loan requires senior management");
@@ -91,17 +95,12 @@ public class LoansAbacEvaluator : IWorkstreamAbacEvaluator
         // }
 
         // Additional business rule: Regional restriction
-        var userRegion = context.Region;
-        var loanRegion = context.ResourceRegion;
-
         // Only check region if entity data is available
         if (!string.IsNullOrEmpty(loanRegion) && !string.IsNullOrEmpty(userRegion))
         {
             if (userRegion != loanRegion)
             {
                 // Exception: Management level 4+ can approve cross-region
-                var managementLevel = context.ManagementLevel;
-
                 if (managementLevel == null || managementLevel < 4)
                 {
                     Console.WriteLine($"[LOANS ABAC] DENY: Region mismatch - user:{userRegion}, loan:{loanRegion}");
@@ -113,8 +112,6 @@ public class LoansAbacEvaluator : IWorkstreamAbacEvaluator
         }
 
         // Additional business rule: Check loan status
-        var loanStatus = context.ResourceStatus;
-
         // Only check status if entity data is available
         if (!string.IsNullOrEmpty(loanStatus) && loanStatus != "Submitted" && loanStatus != "UnderReview")
         {

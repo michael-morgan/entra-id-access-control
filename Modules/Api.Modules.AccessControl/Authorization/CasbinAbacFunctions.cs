@@ -43,29 +43,24 @@ public static class CasbinAbacFunctions
                 return true;
             }
 
-            Console.WriteLine($"[ABAC DEBUG] Context: Region={context.Region}, Dept={context.Department}");
+            var region = context.GetUserAttribute<string>("Region");
+            var department = context.GetUserAttribute<string>("Department");
+            Console.WriteLine($"[ABAC DEBUG] Context: Region={region}, Dept={department}");
 
             // ═══════════════════════════════════════════════════════════
             // WORKSTREAM-SPECIFIC ABAC RULES
             // ═══════════════════════════════════════════════════════════
+            // NOTE: Hardcoded workstream evaluators have been removed.
+            // ABAC evaluation now handled by:
+            // 1. IWorkstreamAbacEvaluator implementations (e.g., LoansAbacEvaluator)
+            // 2. GenericAbacEvaluator with declarative AbacRules from database
+            //
+            // This function is now primarily used as a Casbin custom function
+            // for backward compatibility, but business logic should use
+            // IWorkstreamAbacEvaluatorRegistry instead.
 
-            if (workstream == "loans")
-            {
-                var result = EvaluateLoansAbac(context, resource, action);
-                Console.WriteLine($"[ABAC DEBUG] EvaluateLoansAbac returned: {result}");
-                return result;
-            }
-            else if (workstream == "claims")
-            {
-                return EvaluateClaimsAbac(context, resource, action);
-            }
-            else if (workstream == "documents")
-            {
-                return EvaluateDocumentsAbac(context, resource, action);
-            }
-
-            // Default: allow if no specific ABAC rules
-            Console.WriteLine("[ABAC DEBUG] No specific workstream, returning true");
+            // Default: allow if no specific ABAC rules (delegate to evaluator registry)
+            Console.WriteLine("[ABAC DEBUG] No hardcoded workstream rules, returning true (delegate to evaluator registry)");
             return true;
         }
         catch (Exception ex)
@@ -76,112 +71,15 @@ public static class CasbinAbacFunctions
         }
     }
 
-    private static bool EvaluateLoansAbac(AbacContext context, string resource, string action)
-    {
-        // RULE: Approval requires sufficient approval limit
-        if (action == "approve")
-        {
-            if (!context.ApprovalLimit.HasValue)
-                return false;
-
-            if (context.ResourceValue.HasValue)
-            {
-                // User's approval limit must be >= loan amount
-                if (context.ApprovalLimit.Value < context.ResourceValue.Value)
-                    return false;
-            }
-        }
-
-        // RULE: Regional access - users can only access loans in their region
-        if (context.Region != null && context.ResourceRegion != null)
-        {
-            if (context.Region != context.ResourceRegion && context.Region != "ALL")
-                return false;
-        }
-
-        // RULE: Ownership - users can always access their own loans
-        if (context.ResourceOwnerId != null && context.UserId == context.ResourceOwnerId)
-            return true;
-
-        // RULE: Status-based access
-        if (resource.StartsWith("Loan/") && action == "write")
-        {
-            // Can only modify loans in Draft or UnderReview status
-            if (context.ResourceStatus != null &&
-                context.ResourceStatus != "Draft" &&
-                context.ResourceStatus != "UnderReview")
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private static bool EvaluateClaimsAbac(AbacContext context, string resource, string action)
-    {
-        // RULE: High-value claims require manager approval
-        if (action == "approve" && context.ResourceValue.HasValue)
-        {
-            decimal highValueThreshold = 50000m;
-
-            if (context.ResourceValue.Value > highValueThreshold)
-            {
-                // Requires management level 2 or higher
-                if (!context.ManagementLevel.HasValue || context.ManagementLevel.Value < 2)
-                    return false;
-            }
-        }
-
-        // RULE: Regional access
-        if (context.Region != null && context.ResourceRegion != null)
-        {
-            if (context.Region != context.ResourceRegion && context.Region != "ALL")
-                return false;
-        }
-
-        // RULE: Sensitive claims require internal network
-        if (context.ResourceClassification == "Sensitive")
-        {
-            if (!context.IsInternalNetwork)
-                return false;
-        }
-
-        return true;
-    }
-
-    private static bool EvaluateDocumentsAbac(AbacContext context, string resource, string action)
-    {
-        // RULE: Confidential documents - only during business hours
-        if (context.ResourceClassification == "Confidential")
-        {
-            if (action == "read" || action == "write")
-            {
-                if (!context.IsBusinessHours)
-                    return false;
-            }
-        }
-
-        // RULE: Department-scoped documents
-        if (context.ResourceClassification == "Departmental")
-        {
-            if (context.Department != null && context.Department != "Executive")
-            {
-                // Check custom attributes for document department
-                if (context.CustomAttributes.TryGetValue("documentDepartment", out var docDept))
-                {
-                    if (docDept?.ToString() != context.Department)
-                        return false;
-                }
-            }
-        }
-
-        return true;
-    }
-
     /// <summary>
-    /// Evaluates ABAC rules (both code-based evaluators and declarative rules from database).
+    /// Evaluates ABAC rules (declarative rules from database and IWorkstreamAbacEvaluator implementations).
     /// Called from Casbin matcher with: evalAbacRules(r.ctx, r.workstream, r.res, r.act)
+    ///
+    /// NOTE: Hardcoded workstream-specific evaluators (EvaluateLoansAbac, EvaluateClaimsAbac, EvaluateDocumentsAbac)
+    /// have been removed in favor of:
+    /// 1. IWorkstreamAbacEvaluator implementations (e.g., LoansAbacEvaluator) for complex business logic
+    /// 2. Declarative AbacRules stored in the database for simpler attribute checks
+    ///
     /// Returns false if any rule denies access, true if all pass or no rules exist.
     /// </summary>
     public static bool EvalAbacRules(string contextJson, string workstream, string resource, string action)
