@@ -9,21 +9,14 @@ namespace Api.Modules.AccessControl.Authorization;
 /// <summary>
 /// Authorization handler for resource-based policies using Casbin.
 /// </summary>
-public class CasbinAuthorizationHandler : IAuthorizationHandler
+public class CasbinAuthorizationHandler(
+    IAuthorizationEnforcer enforcer,
+    IHttpContextAccessor httpContextAccessor,
+    ILogger<CasbinAuthorizationHandler> logger) : IAuthorizationHandler
 {
-    private readonly IAuthorizationEnforcer _enforcer;
-    private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly ILogger<CasbinAuthorizationHandler> _logger;
-
-    public CasbinAuthorizationHandler(
-        IAuthorizationEnforcer enforcer,
-        IHttpContextAccessor httpContextAccessor,
-        ILogger<CasbinAuthorizationHandler> logger)
-    {
-        _enforcer = enforcer;
-        _httpContextAccessor = httpContextAccessor;
-        _logger = logger;
-    }
+    private readonly IAuthorizationEnforcer _enforcer = enforcer;
+    private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+    private readonly ILogger<CasbinAuthorizationHandler> _logger = logger;
 
     public async Task HandleAsync(AuthorizationHandlerContext context)
     {
@@ -46,8 +39,8 @@ public class CasbinAuthorizationHandler : IAuthorizationHandler
 
                     if (actionIndex > 0)
                     {
-                        var resource = policyName.Substring("Resource:".Length, actionIndex - "Resource:".Length);
-                        var action = policyName.Substring(actionIndex + actionMarker.Length);
+                        var resource = policyName["Resource:".Length..actionIndex];
+                        var action = policyName[(actionIndex + actionMarker.Length)..];
 
                         // Replace route parameters in resource
                         resource = ReplaceRouteParameters(resource);

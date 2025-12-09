@@ -10,16 +10,10 @@ namespace UI.Modules.AccessControl.Controllers;
 /// <summary>
 /// Controller for managing Casbin resource definitions.
 /// </summary>
-public class ResourcesController : Controller
+public class ResourcesController(AccessControlDbContext context, ILogger<ResourcesController> logger) : Controller
 {
-    private readonly AccessControlDbContext _context;
-    private readonly ILogger<ResourcesController> _logger;
-
-    public ResourcesController(AccessControlDbContext context, ILogger<ResourcesController> logger)
-    {
-        _context = context;
-        _logger = logger;
-    }
+    private readonly AccessControlDbContext _context = context;
+    private readonly ILogger<ResourcesController> _logger = logger;
 
     // GET: Resources
     public async Task<IActionResult> Index(string? workstreamFilter = null, string? search = null)

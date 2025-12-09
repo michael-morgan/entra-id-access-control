@@ -1,10 +1,13 @@
 using Api.Modules.AccessControl.Interfaces;
 using Api.Modules.AccessControl.BusinessEvents;
 using Api.Modules.AccessControl.Persistence;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web;
 using Microsoft.Identity.Web.UI;
+using UI.Modules.AccessControl.Middleware;
 using UI.Modules.AccessControl.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,6 +20,23 @@ builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
         .EnableTokenAcquisitionToCallDownstreamApi(initialScopes)
             .AddMicrosoftGraph(builder.Configuration.GetSection("DownstreamApi"))
             .AddSessionTokenCaches(); // Session-based token cache for POC/demo
+
+// Configure cookie authentication to align with session lifetime
+// When session token cache is empty (e.g., after restart), sign out user to force re-auth
+builder.Services.Configure<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme, options =>
+{
+    options.ExpireTimeSpan = TimeSpan.FromHours(8);
+    options.SlidingExpiration = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+
+    // When accessing a page, validate that we can still acquire tokens
+    options.Events.OnValidatePrincipal = async context =>
+    {
+        // This runs on every request with an authenticated user
+        // We'll let the controllers handle MsalUiRequiredException and redirect to sign-in
+        await Task.CompletedTask;
+    };
+});
 
 builder.Services.AddAuthorization(options =>
 {
@@ -78,6 +98,11 @@ app.UseRouting();
 app.UseSession();
 
 app.UseAuthentication();
+
+// Validate token cache on each request (after authentication, before authorization)
+// This proactively redirects to sign-in if token cache is empty (e.g., after restart)
+app.UseMiddleware<TokenCacheValidationMiddleware>();
+
 app.UseAuthorization();
 
 app.MapControllerRoute(

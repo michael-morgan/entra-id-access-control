@@ -4,7 +4,7 @@ using Api.Modules.DemoApi.Services.Claims;
 using Api.Modules.DemoApi.Services.Documents;
 using Api.Modules.DemoApi.Services.Loans;
 using Api.Modules.AccessControl.Interfaces;
-using Api.Modules.AccessControl.AspNetCore;
+using Api.Modules.AccessControl;
 using Api.Modules.AccessControl.Persistence;
 using Microsoft.EntityFrameworkCore;
 

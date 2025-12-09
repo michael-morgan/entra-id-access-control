@@ -16,18 +16,12 @@ namespace Api.Modules.DemoApi.Controllers;
 [ApiController]
 [Route("api/claims")]
 [Authorize]
-public class ClaimsController : ControllerBase
+public class ClaimsController(
+    IClaimService claimService,
+    ILogger<ClaimsController> logger) : ControllerBase
 {
-    private readonly IClaimService _claimService;
-    private readonly ILogger<ClaimsController> _logger;
-
-    public ClaimsController(
-        IClaimService claimService,
-        ILogger<ClaimsController> logger)
-    {
-        _claimService = claimService;
-        _logger = logger;
-    }
+    private readonly IClaimService _claimService = claimService;
+    private readonly ILogger<ClaimsController> _logger = logger;
 
     /// <summary>
     /// Get all claims (filtered by user's region).

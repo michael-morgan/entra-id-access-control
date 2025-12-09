@@ -9,7 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using AuditConfiguration = Audit.Core.Configuration;
 using AuditEventEntityFramework = Audit.EntityFramework.AuditEventEntityFramework;
 
-namespace Api.Modules.AccessControl.Audit;
+namespace Api.Modules.AccessControl.Configuration;
 
 /// <summary>
 /// Audit.NET configuration for SQL Server.

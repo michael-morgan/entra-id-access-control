@@ -12,16 +12,10 @@ namespace UI.Modules.AccessControl.Controllers;
 /// <summary>
 /// Controller for testing authorization with JWT tokens and viewing all associated access control data.
 /// </summary>
-public class TestController : Controller
+public class TestController(AccessControlDbContext context, ILogger<TestController> logger) : Controller
 {
-    private readonly AccessControlDbContext _context;
-    private readonly ILogger<TestController> _logger;
-
-    public TestController(AccessControlDbContext context, ILogger<TestController> logger)
-    {
-        _context = context;
-        _logger = logger;
-    }
+    private readonly AccessControlDbContext _context = context;
+    private readonly ILogger<TestController> _logger = logger;
 
     // GET: Test
     public IActionResult Index()
@@ -74,16 +68,14 @@ public class TestController : Controller
             result.Email = jwtToken.Claims.FirstOrDefault(c => c.Type == "preferred_username" || c.Type == "email")?.Value;
 
             // Extract groups (may be multiple claims with type "groups")
-            result.Groups = jwtToken.Claims
+            result.Groups = [.. jwtToken.Claims
                 .Where(c => c.Type == "groups")
-                .Select(c => c.Value)
-                .ToList();
+                .Select(c => c.Value)];
 
             // Extract roles (may be multiple claims with type "roles")
-            result.Roles = jwtToken.Claims
+            result.Roles = [.. jwtToken.Claims
                 .Where(c => c.Type == "roles" || c.Type == "role")
-                .Select(c => c.Value)
-                .ToList();
+                .Select(c => c.Value)];
 
             // Get ABAC attributes for the user (stored as JSON)
             if (!string.IsNullOrWhiteSpace(result.UserId))
@@ -119,7 +111,7 @@ public class TestController : Controller
             }
 
             // Get role attributes for all roles (stored as JSON)
-            if (result.Roles.Any())
+            if (result.Roles.Count != 0)
             {
                 var roleAttrs = await _context.RoleAttributes
                     .Where(ra => result.Roles.Contains(ra.RoleValue) && ra.WorkstreamId == request.WorkstreamId)
@@ -242,7 +234,7 @@ public class TestController : Controller
                 .ThenBy(p => p.V0)
                 .ToListAsync();
 
-            result.ApplicablePolicies = policies.Select(p => new PolicySummary
+            result.ApplicablePolicies = [.. policies.Select(p => new PolicySummary
             {
                 Id = p.Id,
                 PolicyType = p.PolicyType,
@@ -254,7 +246,7 @@ public class TestController : Controller
                 V5 = p.V5,
                 WorkstreamId = p.WorkstreamId ?? "",
                 DisplayText = FormatPolicyDisplay(p)
-            }).ToList();
+            })];
 
             // Get ABAC rules for the workstream
             var abacRules = await _context.AbacRules
@@ -263,7 +255,7 @@ public class TestController : Controller
                 .ThenBy(r => r.RuleName)
                 .ToListAsync();
 
-            result.ApplicableAbacRules = abacRules.Select(r => new AbacRuleSummary
+            result.ApplicableAbacRules = [.. abacRules.Select(r => new AbacRuleSummary
             {
                 Id = r.Id,
                 RuleType = r.RuleType,
@@ -273,7 +265,7 @@ public class TestController : Controller
                 EntityAttribute = null,
                 WorkstreamId = r.WorkstreamId,
                 DisplayText = FormatAbacRuleDisplay(r)
-            }).ToList();
+            })];
 
             // Get ABAC rule groups for the workstream
             var ruleGroups = await _context.AbacRuleGroups
@@ -283,14 +275,14 @@ public class TestController : Controller
                 .ThenBy(rg => rg.GroupName)
                 .ToListAsync();
 
-            result.ApplicableRuleGroups = ruleGroups.Select(rg => new AbacRuleGroupSummary
+            result.ApplicableRuleGroups = [.. ruleGroups.Select(rg => new AbacRuleGroupSummary
             {
                 Id = rg.Id,
                 GroupName = rg.GroupName,
                 LogicOperator = rg.LogicalOperator,
                 RuleCount = rg.Rules?.Count ?? 0,
                 WorkstreamId = rg.WorkstreamId
-            }).ToList();
+            })];
 
             return Json(result);
         }
@@ -305,7 +297,7 @@ public class TestController : Controller
         }
     }
 
-    private string FormatPolicyDisplay(CasbinPolicy policy)
+    private static string FormatPolicyDisplay(CasbinPolicy policy)
     {
         return policy.PolicyType switch
         {
@@ -329,25 +321,25 @@ public class TestController : Controller
                 if (config != null)
                 {
                     // Try to extract common configuration fields
-                    if (config.ContainsKey("operator"))
+                    if (config.TryGetValue("operator", out JsonElement operatorValue))
                     {
-                        display += $" {config["operator"].GetString()}";
+                        display += $" {operatorValue.GetString()}";
                     }
 
-                    if (config.ContainsKey("userAttribute"))
+                    if (config.TryGetValue("userAttribute", out JsonElement userAttrValue))
                     {
-                        display += $" user.{config["userAttribute"].GetString()}";
+                        display += $" user.{userAttrValue.GetString()}";
                     }
 
-                    if (config.ContainsKey("resourceProperty"))
+                    if (config.TryGetValue("resourceProperty", out JsonElement resourcePropValue))
                     {
-                        display += $" resource.{config["resourceProperty"].GetString()}";
+                        display += $" resource.{resourcePropValue.GetString()}";
                     }
 
                     if (config.ContainsKey("min") || config.ContainsKey("max"))
                     {
-                        var min = config.ContainsKey("min") ? config["min"].ToString() : "?";
-                        var max = config.ContainsKey("max") ? config["max"].ToString() : "?";
+                        var min = config.TryGetValue("min", out JsonElement minValue) ? minValue.ToString() : "?";
+                        var max = config.TryGetValue("max", out JsonElement maxValue) ? maxValue.ToString() : "?";
                         display += $" [{min} to {max}]";
                     }
                 }
@@ -482,7 +474,7 @@ public class TestController : Controller
                            (p.V3 == request.Action || p.V3 == "*"))
                 .ToList();
 
-            bool rbacAllowed = matchingPermissions.Any();
+            bool rbacAllowed = matchingPermissions.Count != 0;
 
             trace.Add(new AuthorizationStep
             {
@@ -598,7 +590,7 @@ public class TestController : Controller
             {
                 ScenarioName = scenario.Name,
                 Description = scenario.Description,
-                TestResults = new List<AuthorizationTestResult>()
+                TestResults = []
             };
 
             // Execute each test step in the scenario
@@ -741,9 +733,9 @@ public class TestController : Controller
                        (p.V3 == request.Action || p.V3 == "*"))
             .ToList();
 
-        result.IsAuthorized = matchingPermissions.Any();
+        result.IsAuthorized = matchingPermissions.Count != 0;
         result.Decision = result.IsAuthorized ? "Allowed" : "Denied";
-        result.EvaluationTrace = new List<AuthorizationStep>();
+        result.EvaluationTrace = [];
 
         return result;
     }
@@ -932,14 +924,14 @@ public class TestController : Controller
             .Distinct()
             .ToList();
 
-        if (!allowedActions.Any()) return null;
+        if (allowedActions.Count == 0) return null;
 
         // Create scenario with steps for each allowed action
         var scenario = new ScenarioDefinition
         {
             Name = $"{resource} - Authorized Actions",
             Description = $"Test all authorized actions for {resource}",
-            Steps = new List<ScenarioStep>()
+            Steps = []
         };
 
         foreach (var action in allowedActions)
@@ -967,7 +959,7 @@ public class TestController : Controller
     {
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
-        public List<ScenarioStep> Steps { get; set; } = new();
+        public List<ScenarioStep> Steps { get; set; } = [];
     }
 
     private class ScenarioStep
@@ -1005,6 +997,6 @@ public class DynamicScenario
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public string Resource { get; set; } = string.Empty;
-    public List<string> AvailableActions { get; set; } = new();
+    public List<string> AvailableActions { get; set; } = [];
     public string WorkstreamId { get; set; } = string.Empty;
 }

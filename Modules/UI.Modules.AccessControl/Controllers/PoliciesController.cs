@@ -11,24 +11,16 @@ namespace UI.Modules.AccessControl.Controllers;
 /// <summary>
 /// Controller for managing Casbin policies.
 /// </summary>
-public class PoliciesController : Controller
+public class PoliciesController(
+    AccessControlDbContext context,
+    GraphGroupService graphGroupService,
+    GraphUserService graphUserService,
+    ILogger<PoliciesController> logger) : Controller
 {
-    private readonly AccessControlDbContext _context;
-    private readonly GraphGroupService _graphGroupService;
-    private readonly GraphUserService _graphUserService;
-    private readonly ILogger<PoliciesController> _logger;
-
-    public PoliciesController(
-        AccessControlDbContext context,
-        GraphGroupService graphGroupService,
-        GraphUserService graphUserService,
-        ILogger<PoliciesController> logger)
-    {
-        _context = context;
-        _graphGroupService = graphGroupService;
-        _graphUserService = graphUserService;
-        _logger = logger;
-    }
+    private readonly AccessControlDbContext _context = context;
+    private readonly GraphGroupService _graphGroupService = graphGroupService;
+    private readonly GraphUserService _graphUserService = graphUserService;
+    private readonly ILogger<PoliciesController> _logger = logger;
 
     // GET: Policies
     public async Task<IActionResult> Index(string? policyType = null, string? search = null)
@@ -63,7 +55,7 @@ public class PoliciesController : Controller
             .Distinct()
             .ToList();
 
-        Dictionary<string, string> displayNames = new();
+        Dictionary<string, string> displayNames = [];
 
         try
         {
@@ -76,7 +68,7 @@ public class PoliciesController : Controller
 
             // For IDs not found as groups, try users
             var notFoundIds = potentialGroupIds.Except(displayNames.Keys).ToList();
-            if (notFoundIds.Any())
+            if (notFoundIds.Count != 0)
             {
                 var users = await _graphUserService.GetUsersByIdsAsync(notFoundIds);
                 foreach (var kvp in users)

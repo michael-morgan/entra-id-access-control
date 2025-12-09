@@ -23,33 +23,22 @@ public interface IClaimService
     Task<ClaimDto> IssuePaymentAsync(Guid id, string paymentMethod, CancellationToken cancellationToken = default);
 }
 
-public class ClaimService : IClaimService
+public class ClaimService(
+    IClaimRepository repository,
+    IAuthorizationEnforcer enforcer,
+    IBusinessEventPublisher eventPublisher,
+    IBusinessProcessManager processManager,
+    ICorrelationContextAccessor correlationAccessor,
+    ICurrentUserAccessor currentUser,
+    IUserAttributeStore userAttributeStore) : IClaimService
 {
-    private readonly IClaimRepository _repository;
-    private readonly IAuthorizationEnforcer _enforcer;
-    private readonly IBusinessEventPublisher _eventPublisher;
-    private readonly IBusinessProcessManager _processManager;
-    private readonly ICorrelationContextAccessor _correlationAccessor;
-    private readonly ICurrentUserAccessor _currentUser;
-    private readonly IUserAttributeStore _userAttributeStore;
-
-    public ClaimService(
-        IClaimRepository repository,
-        IAuthorizationEnforcer enforcer,
-        IBusinessEventPublisher eventPublisher,
-        IBusinessProcessManager processManager,
-        ICorrelationContextAccessor correlationAccessor,
-        ICurrentUserAccessor currentUser,
-        IUserAttributeStore userAttributeStore)
-    {
-        _repository = repository;
-        _enforcer = enforcer;
-        _eventPublisher = eventPublisher;
-        _processManager = processManager;
-        _correlationAccessor = correlationAccessor;
-        _currentUser = currentUser;
-        _userAttributeStore = userAttributeStore;
-    }
+    private readonly IClaimRepository _repository = repository;
+    private readonly IAuthorizationEnforcer _enforcer = enforcer;
+    private readonly IBusinessEventPublisher _eventPublisher = eventPublisher;
+    private readonly IBusinessProcessManager _processManager = processManager;
+    private readonly ICorrelationContextAccessor _correlationAccessor = correlationAccessor;
+    private readonly ICurrentUserAccessor _currentUser = currentUser;
+    private readonly IUserAttributeStore _userAttributeStore = userAttributeStore;
 
     public async Task<ClaimDto?> GetClaimAsync(Guid id, CancellationToken cancellationToken = default)
     {
@@ -73,7 +62,7 @@ public class ClaimService : IClaimService
         // Fine-grained filtering based on user attributes
         var userId = _currentUser.User.Id;
         var workstreamId = "claims";
-        var userAttributes = await _userAttributeStore.GetAttributesAsync(userId, workstreamId);
+        var userAttributes = await _userAttributeStore.GetAttributesAsync(userId, workstreamId, cancellationToken);
 
         // Extract Region from dynamic attributes
         string? userRegion = null;

@@ -10,16 +10,10 @@ namespace UI.Modules.AccessControl.Controllers;
 /// <summary>
 /// Controller for managing Casbin roles.
 /// </summary>
-public class RolesController : Controller
+public class RolesController(AccessControlDbContext context, ILogger<RolesController> logger) : Controller
 {
-    private readonly AccessControlDbContext _context;
-    private readonly ILogger<RolesController> _logger;
-
-    public RolesController(AccessControlDbContext context, ILogger<RolesController> logger)
-    {
-        _context = context;
-        _logger = logger;
-    }
+    private readonly AccessControlDbContext _context = context;
+    private readonly ILogger<RolesController> _logger = logger;
 
     // GET: Roles
     public async Task<IActionResult> Index(string? search = null)

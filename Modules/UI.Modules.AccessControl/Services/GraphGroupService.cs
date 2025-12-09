@@ -3,21 +3,21 @@ using Microsoft.Graph.Models;
 
 namespace UI.Modules.AccessControl.Services;
 
-public class GraphGroupService
+public class GraphGroupService(
+    GraphServiceClient graphServiceClient,
+    IConfiguration configuration,
+    ILogger<GraphGroupService> logger)
 {
-    private readonly GraphServiceClient _graphClient;
-    private readonly ILogger<GraphGroupService> _logger;
-    private readonly int _defaultPageSize;
-
-    public GraphGroupService(
-        GraphServiceClient graphServiceClient,
-        IConfiguration configuration,
-        ILogger<GraphGroupService> logger)
-    {
-        _graphClient = graphServiceClient;
-        _logger = logger;
-        _defaultPageSize = configuration.GetValue<int>("GraphApi:DefaultPageSize", 100);
-    }
+    private readonly GraphServiceClient _graphClient = graphServiceClient;
+    private readonly ILogger<GraphGroupService> _logger = logger;
+    private readonly int _defaultPageSize = configuration.GetValue<int>("GraphApi:DefaultPageSize", 100);
+    private static readonly string[] requestConfiguration =
+                    [
+                        "id",
+                        "displayName",
+                        "description",
+                        "mailNickname"
+                    ];
 
     /// <summary>
     /// Get all groups with basic properties
@@ -31,15 +31,9 @@ public class GraphGroupService
             var response = await _graphClient.Groups
                 .GetAsync(requestConfig =>
                 {
-                    requestConfig.QueryParameters.Select = new[]
-                    {
-                        "id",
-                        "displayName",
-                        "description",
-                        "mailNickname"
-                    };
+                    requestConfig.QueryParameters.Select = requestConfiguration;
                     requestConfig.QueryParameters.Top = _defaultPageSize;
-                    requestConfig.QueryParameters.Orderby = new[] { "displayName" };
+                    requestConfig.QueryParameters.Orderby = ["displayName"];
                 });
 
             if (response?.Value == null)
@@ -81,13 +75,7 @@ public class GraphGroupService
             var group = await _graphClient.Groups[groupId]
                 .GetAsync(requestConfig =>
                 {
-                    requestConfig.QueryParameters.Select = new[]
-                    {
-                        "id",
-                        "displayName",
-                        "description",
-                        "mailNickname"
-                    };
+                    requestConfig.QueryParameters.Select = requestConfiguration;
                 });
 
             return group;
@@ -116,13 +104,13 @@ public class GraphGroupService
             var group = await _graphClient.Groups[groupId]
                 .GetAsync(requestConfig =>
                 {
-                    requestConfig.QueryParameters.Select = new[]
-                    {
+                    requestConfig.QueryParameters.Select =
+                    [
                         "id",
                         "displayName",
                         "description",
                         "mailNickname"
-                    };
+                    ];
                 });
 
             if (group == null)
@@ -181,7 +169,7 @@ public class GraphGroupService
     {
         var result = new Dictionary<string, Group>();
 
-        if (!groupIds.Any())
+        if (groupIds.Count == 0)
         {
             return result;
         }
@@ -200,12 +188,12 @@ public class GraphGroupService
                 var tasks = batch.Select(groupId =>
                     _graphClient.Groups[groupId].GetAsync(requestConfig =>
                     {
-                        requestConfig.QueryParameters.Select = new[]
-                        {
+                        requestConfig.QueryParameters.Select =
+                        [
                             "id",
                             "displayName",
                             "description"
-                        };
+                        ];
                     }));
 
                 var groups = await Task.WhenAll(tasks);
@@ -246,13 +234,13 @@ public class GraphGroupService
                 {
                     // Use $filter for searching (more reliable than $search for groups)
                     requestConfig.QueryParameters.Filter = $"startswith(displayName,'{searchTerm}')";
-                    requestConfig.QueryParameters.Select = new[]
-                    {
+                    requestConfig.QueryParameters.Select =
+                    [
                         "id",
                         "displayName",
                         "description",
                         "mailNickname"
-                    };
+                    ];
                     requestConfig.QueryParameters.Top = _defaultPageSize;
                 });
 
@@ -287,5 +275,5 @@ public class GraphGroupService
 public class GroupWithMembers
 {
     public Group Group { get; set; } = null!;
-    public List<DirectoryObject> Members { get; set; } = new();
+    public List<DirectoryObject> Members { get; set; } = [];
 }

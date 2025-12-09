@@ -11,16 +11,10 @@ namespace UI.Modules.AccessControl.Controllers;
 /// <summary>
 /// Controller for managing individual ABAC rules.
 /// </summary>
-public class AbacRulesController : Controller
+public class AbacRulesController(AccessControlDbContext context, ILogger<AbacRulesController> logger) : Controller
 {
-    private readonly AccessControlDbContext _context;
-    private readonly ILogger<AbacRulesController> _logger;
-
-    public AbacRulesController(AccessControlDbContext context, ILogger<AbacRulesController> logger)
-    {
-        _context = context;
-        _logger = logger;
-    }
+    private readonly AccessControlDbContext _context = context;
+    private readonly ILogger<AbacRulesController> _logger = logger;
 
     // GET: AbacRules
     public async Task<IActionResult> Index(string? search = null, string? ruleType = null, int? ruleGroupId = null)

@@ -10,7 +10,7 @@ namespace Api.Modules.AccessControl.Authorization;
 /// </summary>
 public class WorkstreamAbacEvaluatorRegistry : IWorkstreamAbacEvaluatorRegistry
 {
-    private readonly Dictionary<string, List<IWorkstreamAbacEvaluator>> _evaluators = new();
+    private readonly Dictionary<string, List<IWorkstreamAbacEvaluator>> _evaluators = [];
     private readonly ILogger<WorkstreamAbacEvaluatorRegistry> _logger;
 
     public WorkstreamAbacEvaluatorRegistry(
@@ -22,12 +22,13 @@ public class WorkstreamAbacEvaluatorRegistry : IWorkstreamAbacEvaluatorRegistry
         // Group evaluators by workstream
         foreach (var evaluator in evaluators)
         {
-            if (!_evaluators.ContainsKey(evaluator.WorkstreamId))
+            if (!_evaluators.TryGetValue(evaluator.WorkstreamId, out List<IWorkstreamAbacEvaluator>? value))
             {
-                _evaluators[evaluator.WorkstreamId] = new List<IWorkstreamAbacEvaluator>();
+                value = [];
+                _evaluators[evaluator.WorkstreamId] = value;
             }
 
-            _evaluators[evaluator.WorkstreamId].Add(evaluator);
+            value.Add(evaluator);
             _logger.LogInformation(
                 "Registered ABAC evaluator {EvaluatorType} for workstream {WorkstreamId}",
                 evaluator.GetType().Name, evaluator.WorkstreamId);

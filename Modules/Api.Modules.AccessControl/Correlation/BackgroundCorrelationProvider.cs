@@ -7,18 +7,12 @@ namespace Api.Modules.AccessControl.Correlation;
 /// <summary>
 /// Creates and manages correlation context for background operations.
 /// </summary>
-public class BackgroundCorrelationProvider : IBackgroundCorrelationProvider
+public class BackgroundCorrelationProvider(
+    ICorrelationContextAccessor accessor,
+    ILogger<BackgroundCorrelationProvider> logger) : IBackgroundCorrelationProvider
 {
-    private readonly ICorrelationContextAccessor _accessor;
-    private readonly ILogger<BackgroundCorrelationProvider> _logger;
-
-    public BackgroundCorrelationProvider(
-        ICorrelationContextAccessor accessor,
-        ILogger<BackgroundCorrelationProvider> logger)
-    {
-        _accessor = accessor;
-        _logger = logger;
-    }
+    private readonly ICorrelationContextAccessor _accessor = accessor;
+    private readonly ILogger<BackgroundCorrelationProvider> _logger = logger;
 
     public CorrelationContext CreateBackgroundContext(
         string workstreamId,

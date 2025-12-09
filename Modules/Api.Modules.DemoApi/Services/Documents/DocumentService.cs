@@ -22,27 +22,18 @@ public interface IDocumentService
     Task DeleteDocumentAsync(Guid id, CancellationToken cancellationToken = default);
 }
 
-public class DocumentService : IDocumentService
+public class DocumentService(
+    IDocumentRepository repository,
+    IAuthorizationEnforcer enforcer,
+    IBusinessEventPublisher eventPublisher,
+    ICurrentUserAccessor currentUser,
+    IUserAttributeStore userAttributeStore) : IDocumentService
 {
-    private readonly IDocumentRepository _repository;
-    private readonly IAuthorizationEnforcer _enforcer;
-    private readonly IBusinessEventPublisher _eventPublisher;
-    private readonly ICurrentUserAccessor _currentUser;
-    private readonly IUserAttributeStore _userAttributeStore;
-
-    public DocumentService(
-        IDocumentRepository repository,
-        IAuthorizationEnforcer enforcer,
-        IBusinessEventPublisher eventPublisher,
-        ICurrentUserAccessor currentUser,
-        IUserAttributeStore userAttributeStore)
-    {
-        _repository = repository;
-        _enforcer = enforcer;
-        _eventPublisher = eventPublisher;
-        _currentUser = currentUser;
-        _userAttributeStore = userAttributeStore;
-    }
+    private readonly IDocumentRepository _repository = repository;
+    private readonly IAuthorizationEnforcer _enforcer = enforcer;
+    private readonly IBusinessEventPublisher _eventPublisher = eventPublisher;
+    private readonly ICurrentUserAccessor _currentUser = currentUser;
+    private readonly IUserAttributeStore _userAttributeStore = userAttributeStore;
 
     public async Task<DocumentDto?> GetDocumentAsync(Guid id, CancellationToken cancellationToken = default)
     {
@@ -82,7 +73,7 @@ public class DocumentService : IDocumentService
         // Fine-grained filtering based on user attributes
         var userId = _currentUser.User.Id;
         var workstreamId = "documents";
-        var userAttributes = await _userAttributeStore.GetAttributesAsync(userId, workstreamId);
+        var userAttributes = await _userAttributeStore.GetAttributesAsync(userId, workstreamId, cancellationToken);
 
         // Extract Department from dynamic attributes
         string? userDepartment = null;

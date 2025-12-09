@@ -11,21 +11,14 @@ namespace Api.Modules.AccessControl.Correlation;
 /// <summary>
 /// Manages business process lifecycle.
 /// </summary>
-public class BusinessProcessManager : IBusinessProcessManager
+public class BusinessProcessManager(
+    AccessControlDbContext context,
+    ICurrentUserAccessor currentUser,
+    ILogger<BusinessProcessManager> logger) : IBusinessProcessManager
 {
-    private readonly AccessControlDbContext _context;
-    private readonly ICurrentUserAccessor _currentUser;
-    private readonly ILogger<BusinessProcessManager> _logger;
-
-    public BusinessProcessManager(
-        AccessControlDbContext context,
-        ICurrentUserAccessor currentUser,
-        ILogger<BusinessProcessManager> logger)
-    {
-        _context = context;
-        _currentUser = currentUser;
-        _logger = logger;
-    }
+    private readonly AccessControlDbContext _context = context;
+    private readonly ICurrentUserAccessor _currentUser = currentUser;
+    private readonly ILogger<BusinessProcessManager> _logger = logger;
 
     public async Task<BusinessProcess> InitiateProcessAsync(
         string processType,
@@ -135,7 +128,7 @@ public class BusinessProcessManager : IBusinessProcessManager
         {
             var metadata = !string.IsNullOrWhiteSpace(entity.Metadata)
                 ? JsonSerializer.Deserialize<Dictionary<string, object>>(entity.Metadata)
-                : new Dictionary<string, object>();
+                : [];
 
             if (metadata != null)
             {

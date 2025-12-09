@@ -10,7 +10,7 @@ public sealed record GroupAttributes
     public required string GroupId { get; init; }
     public required string WorkstreamId { get; init; }
     public string? GroupName { get; init; }
-    public Dictionary<string, JsonElement> Attributes { get; init; } = new();
+    public Dictionary<string, JsonElement> Attributes { get; init; } = [];
 
     /// <summary>
     /// Get string attribute value.
@@ -52,9 +52,8 @@ public sealed record GroupAttributes
         if (!Attributes.TryGetValue(key, out var value) || value.ValueKind != JsonValueKind.Array)
             return null;
 
-        return value.EnumerateArray()
+        return [.. value.EnumerateArray()
             .Where(v => v.ValueKind == JsonValueKind.String)
-            .Select(v => v.GetString()!)
-            .ToArray();
+            .Select(v => v.GetString()!)];
     }
 }

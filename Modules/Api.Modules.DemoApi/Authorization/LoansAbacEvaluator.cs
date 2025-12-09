@@ -26,7 +26,7 @@ public class LoansAbacEvaluator : IWorkstreamAbacEvaluator
         return Task.FromResult<AbacEvaluationResult?>(EvaluateLoanApproval(context));
     }
 
-    private AbacEvaluationResult EvaluateLoanApproval(AbacContext context)
+    private static AbacEvaluationResult EvaluateLoanApproval(AbacContext context)
     {
         // Extract dynamic attributes using helper methods
         var userApprovalLimit = context.GetUserAttribute<decimal?>("ApprovalLimit");

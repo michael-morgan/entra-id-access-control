@@ -12,22 +12,15 @@ namespace Api.Modules.AccessControl.Authorization;
 /// <summary>
 /// Stores and retrieves user attributes with caching.
 /// </summary>
-public class SqlUserAttributeStore : IUserAttributeStore
+public class SqlUserAttributeStore(
+    AccessControlDbContext context,
+    IMemoryCache cache,
+    ILogger<SqlUserAttributeStore> logger) : IUserAttributeStore
 {
-    private readonly AccessControlDbContext _context;
-    private readonly IMemoryCache _cache;
-    private readonly ILogger<SqlUserAttributeStore> _logger;
+    private readonly AccessControlDbContext _context = context;
+    private readonly IMemoryCache _cache = cache;
+    private readonly ILogger<SqlUserAttributeStore> _logger = logger;
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(15);
-
-    public SqlUserAttributeStore(
-        AccessControlDbContext context,
-        IMemoryCache cache,
-        ILogger<SqlUserAttributeStore> logger)
-    {
-        _context = context;
-        _cache = cache;
-        _logger = logger;
-    }
 
     public async Task<UserAttributes?> GetAttributesAsync(
         string userId,
@@ -97,16 +90,16 @@ public class SqlUserAttributeStore : IUserAttributeStore
     private static Dictionary<string, JsonElement> DeserializeAttributes(string? json)
     {
         if (string.IsNullOrWhiteSpace(json))
-            return new Dictionary<string, JsonElement>();
+            return [];
 
         try
         {
             return JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)
-                ?? new Dictionary<string, JsonElement>();
+                ?? [];
         }
         catch
         {
-            return new Dictionary<string, JsonElement>();
+            return [];
         }
     }
 

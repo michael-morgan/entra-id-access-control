@@ -11,22 +11,15 @@ namespace Api.Modules.AccessControl.Authorization;
 /// <summary>
 /// Stores and retrieves role attributes with caching.
 /// </summary>
-public class SqlRoleAttributeStore : IRoleAttributeStore
+public class SqlRoleAttributeStore(
+    AccessControlDbContext context,
+    IMemoryCache cache,
+    ILogger<SqlRoleAttributeStore> logger) : IRoleAttributeStore
 {
-    private readonly AccessControlDbContext _context;
-    private readonly IMemoryCache _cache;
-    private readonly ILogger<SqlRoleAttributeStore> _logger;
+    private readonly AccessControlDbContext _context = context;
+    private readonly IMemoryCache _cache = cache;
+    private readonly ILogger<SqlRoleAttributeStore> _logger = logger;
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(15);
-
-    public SqlRoleAttributeStore(
-        AccessControlDbContext context,
-        IMemoryCache cache,
-        ILogger<SqlRoleAttributeStore> logger)
-    {
-        _context = context;
-        _cache = cache;
-        _logger = logger;
-    }
 
     public async Task<RoleAttributes?> GetAttributesByAppRoleIdAsync(
         string appRoleId,
@@ -187,16 +180,16 @@ public class SqlRoleAttributeStore : IRoleAttributeStore
     private static Dictionary<string, JsonElement> DeserializeAttributes(string? json)
     {
         if (string.IsNullOrWhiteSpace(json))
-            return new Dictionary<string, JsonElement>();
+            return [];
 
         try
         {
             return JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)
-                ?? new Dictionary<string, JsonElement>();
+                ?? [];
         }
         catch
         {
-            return new Dictionary<string, JsonElement>();
+            return [];
         }
     }
 

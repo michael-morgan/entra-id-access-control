@@ -11,21 +11,14 @@ namespace UI.Modules.AccessControl.Controllers;
 /// <summary>
 /// Controller for managing user attributes for ABAC.
 /// </summary>
-public class UserAttributesController : Controller
+public class UserAttributesController(
+    AccessControlDbContext context,
+    GraphUserService graphUserService,
+    ILogger<UserAttributesController> logger) : Controller
 {
-    private readonly AccessControlDbContext _context;
-    private readonly GraphUserService _graphUserService;
-    private readonly ILogger<UserAttributesController> _logger;
-
-    public UserAttributesController(
-        AccessControlDbContext context,
-        GraphUserService graphUserService,
-        ILogger<UserAttributesController> logger)
-    {
-        _context = context;
-        _graphUserService = graphUserService;
-        _logger = logger;
-    }
+    private readonly AccessControlDbContext _context = context;
+    private readonly GraphUserService _graphUserService = graphUserService;
+    private readonly ILogger<UserAttributesController> _logger = logger;
 
     // GET: UserAttributes
     public async Task<IActionResult> Index(string? search = null)
@@ -45,7 +38,7 @@ public class UserAttributesController : Controller
 
         // Fetch user display names from Entra ID
         var userIds = userAttributes.Select(ua => ua.UserId).Distinct().ToList();
-        Dictionary<string, string> userDisplayNames = new();
+        Dictionary<string, string> userDisplayNames = [];
 
         try
         {

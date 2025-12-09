@@ -7,14 +7,9 @@ namespace Api.Modules.AccessControl.Authorization;
 /// Custom authorization policy provider that dynamically creates policies for resource-based authorization.
 /// Handles policies with names like "Resource:Loan:Action:list" created by AuthorizeResourceAttribute.
 /// </summary>
-public class ResourcePolicyProvider : IAuthorizationPolicyProvider
+public class ResourcePolicyProvider(IOptions<Microsoft.AspNetCore.Authorization.AuthorizationOptions> options) : IAuthorizationPolicyProvider
 {
-    private readonly DefaultAuthorizationPolicyProvider _fallbackPolicyProvider;
-
-    public ResourcePolicyProvider(IOptions<Microsoft.AspNetCore.Authorization.AuthorizationOptions> options)
-    {
-        _fallbackPolicyProvider = new DefaultAuthorizationPolicyProvider(options);
-    }
+    private readonly DefaultAuthorizationPolicyProvider _fallbackPolicyProvider = new DefaultAuthorizationPolicyProvider(options);
 
     public Task<AuthorizationPolicy> GetDefaultPolicyAsync()
     {
@@ -49,12 +44,7 @@ public class ResourcePolicyProvider : IAuthorizationPolicyProvider
 /// Authorization requirement for resource-based policies.
 /// Used by the CasbinAuthorizationHandler to enforce policies.
 /// </summary>
-public class ResourceAuthorizationRequirement : IAuthorizationRequirement
+public class ResourceAuthorizationRequirement(string policyName) : IAuthorizationRequirement
 {
-    public string PolicyName { get; }
-
-    public ResourceAuthorizationRequirement(string policyName)
-    {
-        PolicyName = policyName;
-    }
+    public string PolicyName { get; } = policyName;
 }

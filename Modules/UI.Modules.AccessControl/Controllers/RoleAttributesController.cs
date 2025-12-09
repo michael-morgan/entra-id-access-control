@@ -10,16 +10,10 @@ namespace UI.Modules.AccessControl.Controllers;
 /// <summary>
 /// Controller for managing role attributes for ABAC.
 /// </summary>
-public class RoleAttributesController : Controller
+public class RoleAttributesController(AccessControlDbContext context, ILogger<RoleAttributesController> logger) : Controller
 {
-    private readonly AccessControlDbContext _context;
-    private readonly ILogger<RoleAttributesController> _logger;
-
-    public RoleAttributesController(AccessControlDbContext context, ILogger<RoleAttributesController> logger)
-    {
-        _context = context;
-        _logger = logger;
-    }
+    private readonly AccessControlDbContext _context = context;
+    private readonly ILogger<RoleAttributesController> _logger = logger;
 
     // GET: RoleAttributes
     public async Task<IActionResult> Index(string? search = null)

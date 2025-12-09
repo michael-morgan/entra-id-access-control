@@ -19,33 +19,22 @@ public interface ILoanService
     Task<LoanDto> DisburseLoanAsync(Guid id, string disbursementMethod, CancellationToken cancellationToken = default);
 }
 
-public class LoanService : ILoanService
+public class LoanService(
+    ILoanRepository repository,
+    IAuthorizationEnforcer enforcer,
+    IBusinessEventPublisher eventPublisher,
+    IBusinessProcessManager processManager,
+    ICorrelationContextAccessor correlationAccessor,
+    ICurrentUserAccessor currentUser,
+    IUserAttributeStore userAttributeStore) : ILoanService
 {
-    private readonly ILoanRepository _repository;
-    private readonly IAuthorizationEnforcer _enforcer;
-    private readonly IBusinessEventPublisher _eventPublisher;
-    private readonly IBusinessProcessManager _processManager;
-    private readonly ICorrelationContextAccessor _correlationAccessor;
-    private readonly ICurrentUserAccessor _currentUser;
-    private readonly IUserAttributeStore _userAttributeStore;
-
-    public LoanService(
-        ILoanRepository repository,
-        IAuthorizationEnforcer enforcer,
-        IBusinessEventPublisher eventPublisher,
-        IBusinessProcessManager processManager,
-        ICorrelationContextAccessor correlationAccessor,
-        ICurrentUserAccessor currentUser,
-        IUserAttributeStore userAttributeStore)
-    {
-        _repository = repository;
-        _enforcer = enforcer;
-        _eventPublisher = eventPublisher;
-        _processManager = processManager;
-        _correlationAccessor = correlationAccessor;
-        _currentUser = currentUser;
-        _userAttributeStore = userAttributeStore;
-    }
+    private readonly ILoanRepository _repository = repository;
+    private readonly IAuthorizationEnforcer _enforcer = enforcer;
+    private readonly IBusinessEventPublisher _eventPublisher = eventPublisher;
+    private readonly IBusinessProcessManager _processManager = processManager;
+    private readonly ICorrelationContextAccessor _correlationAccessor = correlationAccessor;
+    private readonly ICurrentUserAccessor _currentUser = currentUser;
+    private readonly IUserAttributeStore _userAttributeStore = userAttributeStore;
 
     public async Task<LoanDto?> GetLoanAsync(Guid id, CancellationToken cancellationToken = default)
     {
@@ -69,7 +58,7 @@ public class LoanService : ILoanService
         // Fine-grained filtering based on user attributes
         var userId = _currentUser.User.Id;
         var workstreamId = "loans";
-        var userAttributes = await _userAttributeStore.GetAttributesAsync(userId, workstreamId);
+        var userAttributes = await _userAttributeStore.GetAttributesAsync(userId, workstreamId, cancellationToken);
 
         // Extract Region from dynamic attributes
         string? userRegion = null;

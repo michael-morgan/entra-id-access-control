@@ -13,7 +13,7 @@ public class AuthorizationTestResult
     public bool IsAuthorized { get; set; }
     public string Decision { get; set; } = string.Empty; // "Allowed" or "Denied"
 
-    public List<AuthorizationStep> EvaluationTrace { get; set; } = new();
+    public List<AuthorizationStep> EvaluationTrace { get; set; } = [];
 
     public string? MockEntityJson { get; set; }
 }

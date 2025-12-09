@@ -10,43 +10,28 @@ namespace UI.Modules.AccessControl.Controllers;
 
 [Authorize]
 [AuthorizeForScopes(ScopeKeySection = "DownstreamApi:Scopes")]
-public class UsersController : Controller
+public class UsersController(
+    GraphUserService graphUserService,
+    GraphGroupService graphGroupService,
+    AccessControlDbContext context,
+    ILogger<UsersController> logger) : Controller
 {
-    private readonly GraphUserService _graphUserService;
-    private readonly GraphGroupService _graphGroupService;
-    private readonly AccessControlDbContext _context;
-    private readonly ILogger<UsersController> _logger;
-
-    public UsersController(
-        GraphUserService graphUserService,
-        GraphGroupService graphGroupService,
-        AccessControlDbContext context,
-        ILogger<UsersController> logger)
-    {
-        _graphUserService = graphUserService;
-        _graphGroupService = graphGroupService;
-        _context = context;
-        _logger = logger;
-    }
+    private readonly GraphUserService _graphUserService = graphUserService;
+    private readonly GraphGroupService _graphGroupService = graphGroupService;
+    private readonly AccessControlDbContext _context = context;
+    private readonly ILogger<UsersController> _logger = logger;
 
     // GET: Users
     public async Task<IActionResult> Index(string? searchTerm)
     {
-        try
-        {
-            var users = string.IsNullOrWhiteSpace(searchTerm)
-                ? await _graphUserService.GetAllUsersAsync()
-                : await _graphUserService.SearchUsersAsync(searchTerm);
+        // MicrosoftIdentityWebChallengeUserException is handled globally by MsalUiRequiredExceptionFilter
+        // Don't catch it here - let it bubble up to the filter
+        var users = string.IsNullOrWhiteSpace(searchTerm)
+            ? await _graphUserService.GetAllUsersAsync()
+            : await _graphUserService.SearchUsersAsync(searchTerm);
 
-            ViewBag.SearchTerm = searchTerm;
-            return View(users);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving users from Graph API");
-            TempData["Error"] = "Failed to retrieve users from Entra ID. Please try again.";
-            return View(new List<Microsoft.Graph.Models.User>());
-        }
+        ViewBag.SearchTerm = searchTerm;
+        return View(users);
     }
 
     // GET: Users/Details/5
@@ -85,10 +70,9 @@ public class UsersController : Controller
                 User = userWithGroups.User,
                 Groups = userWithGroups.Groups,
                 UserAttributes = userAttributes,
-                RoleAssignments = roleAssignments
+                RoleAssignments = [.. roleAssignments
                     .Select(ra => $"{ra.Role} (via group, {ra.Workstream})")
-                    .Distinct()
-                    .ToList()
+                    .Distinct()]
             };
 
             return View(viewModel);

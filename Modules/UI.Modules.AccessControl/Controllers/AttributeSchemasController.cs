@@ -11,16 +11,10 @@ namespace UI.Modules.AccessControl.Controllers;
 /// <summary>
 /// Controller for managing Attribute Schemas.
 /// </summary>
-public class AttributeSchemasController : Controller
+public class AttributeSchemasController(AccessControlDbContext context, ILogger<AttributeSchemasController> logger) : Controller
 {
-    private readonly AccessControlDbContext _context;
-    private readonly ILogger<AttributeSchemasController> _logger;
-
-    public AttributeSchemasController(AccessControlDbContext context, ILogger<AttributeSchemasController> logger)
-    {
-        _context = context;
-        _logger = logger;
-    }
+    private readonly AccessControlDbContext _context = context;
+    private readonly ILogger<AttributeSchemasController> _logger = logger;
 
     // GET: AttributeSchemas
     public async Task<IActionResult> Index(string? search = null, string? attributeLevel = null)
@@ -307,7 +301,7 @@ public class AttributeSchemasController : Controller
         };
     }
 
-    private string? BuildValidationRulesJson(AttributeSchemaViewModel viewModel)
+    private static string? BuildValidationRulesJson(AttributeSchemaViewModel viewModel)
     {
         if (string.IsNullOrWhiteSpace(viewModel.AllowedValuesInput))
         {
@@ -321,7 +315,7 @@ public class AttributeSchemasController : Controller
             .Where(v => !string.IsNullOrWhiteSpace(v))
             .ToList();
 
-        if (!allowedValues.Any())
+        if (allowedValues.Count == 0)
         {
             return viewModel.ValidationRules;
         }
@@ -329,7 +323,7 @@ public class AttributeSchemasController : Controller
         // Create JSON with allowedValues
         var validationRules = new
         {
-            allowedValues = allowedValues
+            allowedValues
         };
 
         return JsonSerializer.Serialize(validationRules);

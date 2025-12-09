@@ -11,27 +11,18 @@ namespace Api.Modules.AccessControl.Authorization;
 /// Builds ABAC context from current user, resource, and environment.
 /// Merges attributes from user, groups, and roles with precedence: User > Role > Group.
 /// </summary>
-public class DefaultAbacContextProvider : IAbacContextProvider
+public class DefaultAbacContextProvider(
+    IUserAttributeStore userAttributeStore,
+    IGroupAttributeStore groupAttributeStore,
+    IRoleAttributeStore roleAttributeStore,
+    IHttpContextAccessor httpContextAccessor,
+    IOptions<AuthorizationOptions> options) : IAbacContextProvider
 {
-    private readonly IUserAttributeStore _userAttributeStore;
-    private readonly IGroupAttributeStore _groupAttributeStore;
-    private readonly IRoleAttributeStore _roleAttributeStore;
-    private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly IOptions<AuthorizationOptions> _options;
-
-    public DefaultAbacContextProvider(
-        IUserAttributeStore userAttributeStore,
-        IGroupAttributeStore groupAttributeStore,
-        IRoleAttributeStore roleAttributeStore,
-        IHttpContextAccessor httpContextAccessor,
-        IOptions<AuthorizationOptions> options)
-    {
-        _userAttributeStore = userAttributeStore;
-        _groupAttributeStore = groupAttributeStore;
-        _roleAttributeStore = roleAttributeStore;
-        _httpContextAccessor = httpContextAccessor;
-        _options = options;
-    }
+    private readonly IUserAttributeStore _userAttributeStore = userAttributeStore;
+    private readonly IGroupAttributeStore _groupAttributeStore = groupAttributeStore;
+    private readonly IRoleAttributeStore _roleAttributeStore = roleAttributeStore;
+    private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+    private readonly IOptions<AuthorizationOptions> _options = options;
 
     public async Task<AbacContext> BuildContextAsync(
         ClaimsPrincipal user,
@@ -212,7 +203,7 @@ public class AuthorizationOptions
     public TimeSpan PolicySlidingExpiration { get; set; } = TimeSpan.FromMinutes(1);
     public int BusinessHoursStart { get; set; } = 8;
     public int BusinessHoursEnd { get; set; } = 18;
-    public List<string> InternalNetworkRanges { get; set; } = new() { "10.", "192.168." };
+    public List<string> InternalNetworkRanges { get; set; } = ["10.", "192.168."];
 }
 
 /// <summary>

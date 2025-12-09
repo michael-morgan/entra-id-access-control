@@ -12,22 +12,15 @@ namespace Api.Modules.AccessControl.Authorization;
 /// Generic ABAC evaluator that processes declarative rules from the database.
 /// Supports rule groups with AND/OR logic and multiple rule types.
 /// </summary>
-public class GenericAbacEvaluator : IWorkstreamAbacEvaluator
+public class GenericAbacEvaluator(
+    string workstreamId,
+    AccessControlDbContext context,
+    ILogger<GenericAbacEvaluator> logger) : IWorkstreamAbacEvaluator
 {
-    private readonly AccessControlDbContext _context;
-    private readonly ILogger<GenericAbacEvaluator> _logger;
+    private readonly AccessControlDbContext _context = context;
+    private readonly ILogger<GenericAbacEvaluator> _logger = logger;
 
-    public string WorkstreamId { get; }
-
-    public GenericAbacEvaluator(
-        string workstreamId,
-        AccessControlDbContext context,
-        ILogger<GenericAbacEvaluator> logger)
-    {
-        WorkstreamId = workstreamId;
-        _context = context;
-        _logger = logger;
-    }
+    public string WorkstreamId { get; } = workstreamId;
 
     public async Task<AbacEvaluationResult?> EvaluateAsync(
         AbacContext context,
@@ -49,7 +42,7 @@ public class GenericAbacEvaluator : IWorkstreamAbacEvaluator
             .OrderBy(g => g.Priority)
             .ToListAsync(cancellationToken);
 
-        if (!ruleGroups.Any())
+        if (ruleGroups.Count == 0)
         {
             _logger.LogDebug("No rule groups found for {Workstream} - {Resource}:{Action}",
                 WorkstreamId, resource, action);
@@ -107,7 +100,7 @@ public class GenericAbacEvaluator : IWorkstreamAbacEvaluator
             }
         }
 
-        if (!results.Any())
+        if (results.Count == 0)
         {
             return null; // No applicable rules
         }
@@ -396,7 +389,7 @@ public class GenericAbacEvaluator : IWorkstreamAbacEvaluator
         return AbacEvaluationResult.Allow($"Rule '{rule.RuleName}' passed");
     }
 
-    private AbacEvaluationResult? EvaluateLocationRestriction(AbacRule rule, JsonDocument config, AbacContext context)
+    private static AbacEvaluationResult? EvaluateLocationRestriction(AbacRule rule, JsonDocument config, AbacContext context)
     {
         // Example: { "allowedNetworks": ["10.0.0.0/8", "192.168.1.0/24"] }
         // Simplified - would need IP address checking logic
@@ -442,7 +435,7 @@ public class GenericAbacEvaluator : IWorkstreamAbacEvaluator
     /// Gets a value from the ABAC context by property name.
     /// Supports dynamic attribute lookup from UserAttributes and ResourceAttributes dictionaries.
     /// </summary>
-    private object? GetContextValue(AbacContext context, string? propertyName)
+    private static object? GetContextValue(AbacContext context, string? propertyName)
     {
         if (string.IsNullOrEmpty(propertyName))
             return null;
@@ -507,7 +500,7 @@ public class GenericAbacEvaluator : IWorkstreamAbacEvaluator
         };
     }
 
-    private bool IsNumeric(object value)
+    private static bool IsNumeric(object value)
     {
         return value is int or long or decimal or double or float
                || decimal.TryParse(value?.ToString(), out _);

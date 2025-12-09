@@ -6,15 +6,10 @@ namespace UI.Modules.AccessControl.Controllers;
 /// <summary>
 /// Controller for managing workstream context selection.
 /// </summary>
-public class WorkstreamController : Controller
+public class WorkstreamController(ILogger<WorkstreamController> logger) : Controller
 {
-    private readonly ILogger<WorkstreamController> _logger;
+    private readonly ILogger<WorkstreamController> _logger = logger;
     private const string WorkstreamSessionKey = "SelectedWorkstream";
-
-    public WorkstreamController(ILogger<WorkstreamController> logger)
-    {
-        _logger = logger;
-    }
 
     /// <summary>
     /// Sets the selected workstream in session and returns to the previous page.

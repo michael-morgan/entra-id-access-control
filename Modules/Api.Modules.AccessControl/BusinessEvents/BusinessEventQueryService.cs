@@ -9,14 +9,9 @@ namespace Api.Modules.AccessControl.BusinessEvents;
 /// <summary>
 /// Query service for business events.
 /// </summary>
-public class BusinessEventQueryService : IBusinessEventQueryService
+public class BusinessEventQueryService(AccessControlDbContext context) : IBusinessEventQueryService
 {
-    private readonly AccessControlDbContext _context;
-
-    public BusinessEventQueryService(AccessControlDbContext context)
-    {
-        _context = context;
-    }
+    private readonly AccessControlDbContext _context = context;
 
     public async Task<PagedResult<BusinessEventSummary>> QueryAsync(
         EventQuery query,
@@ -105,8 +100,8 @@ public class BusinessEventQueryService : IBusinessEventQueryService
             return null;
 
         var affectedEntities = string.IsNullOrWhiteSpace(@event.AffectedEntities)
-            ? Array.Empty<AffectedEntity>()
-            : JsonSerializer.Deserialize<AffectedEntity[]>(@event.AffectedEntities) ?? Array.Empty<AffectedEntity>();
+            ? []
+            : JsonSerializer.Deserialize<AffectedEntity[]>(@event.AffectedEntities) ?? [];
 
         return new BusinessEventDetail(
             @event.EventId,

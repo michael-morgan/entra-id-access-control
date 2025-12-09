@@ -8,9 +8,9 @@ namespace Api.Modules.DemoApi.Data;
 /// <summary>
 /// Seeds POC data for Alice, Bob, and Carol with realistic scenarios.
 /// </summary>
-public class SeedDataService
+public class SeedDataService(AccessControlDbContext context)
 {
-    private readonly AccessControlDbContext _context;
+    private readonly AccessControlDbContext _context = context;
 
     // ═══════════════════════════════════════════════════════════════════════════
     // ENTRA ID OBJECT IDS - REAL VALUES FROM TENANT
@@ -39,11 +39,6 @@ public class SeedDataService
     private const string DOCUMENTS_VIEWERS = "3f5df870-bdce-4d85-864e-ec5e79ae4bba";
     private const string DOCUMENTS_UPLOADERS = "35504b82-f012-4b71-9b91-bb7180f15992";
     private const string DOCUMENTS_MANAGERS = "4002596b-8fae-4264-8cf0-d1d43890a56f";
-
-    public SeedDataService(AccessControlDbContext context)
-    {
-        _context = context;
-    }
 
     public async Task SeedAsync()
     {
@@ -462,7 +457,7 @@ public class SeedDataService
             _context.CasbinPolicies.Add(mapping);
             if (mapping.V0.Length == 36) // Group ID
             {
-                Console.WriteLine($"  ✓ Group {mapping.V0.Substring(0, 8)}... → {mapping.V1}");
+                Console.WriteLine($"  ✓ Group {mapping.V0[..8]}... → {mapping.V1}");
             }
             else // Role inheritance
             {
@@ -553,7 +548,7 @@ public class SeedDataService
         Console.WriteLine("\n[4/8] Seeding user attributes (workstream-scoped dynamic attributes)...");
 
         // Helper to create attributes JSON
-        var createAttrs = (string dept, string region, decimal approvalLimit, int mgmtLevel, string? costCenter = null) =>
+        static string createAttrs(string dept, string region, decimal approvalLimit, int mgmtLevel, string? costCenter = null)
         {
             var attrs = new Dictionary<string, object>
             {
@@ -564,7 +559,7 @@ public class SeedDataService
             };
             if (costCenter != null) attrs["CostCenter"] = costCenter;
             return System.Text.Json.JsonSerializer.Serialize(attrs);
-        };
+        }
 
         var userAttributes = new List<UserAttribute>
         {
@@ -831,7 +826,7 @@ public class SeedDataService
         return Task.CompletedTask;
     }
 
-    private Task SeedSampleDataAsync()
+    private static Task SeedSampleDataAsync()
     {
         Console.WriteLine("\n[8/8] Seeding sample resource data for POC scenarios...");
 

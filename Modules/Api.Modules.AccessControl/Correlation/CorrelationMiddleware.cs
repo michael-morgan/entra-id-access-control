@@ -1,31 +1,23 @@
 using Api.Modules.AccessControl.Constants;
 using Api.Modules.AccessControl.Interfaces;
 using Api.Modules.AccessControl.Models;
-using Api.Modules.AccessControl.Correlation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace Api.Modules.AccessControl.AspNetCore;
+namespace Api.Modules.AccessControl.Correlation;
 
 /// <summary>
 /// Middleware that extracts/generates correlation IDs and enriches logging.
 /// </summary>
-public class CorrelationMiddleware : IMiddleware
+public class CorrelationMiddleware(
+    ICorrelationContextAccessor accessor,
+    IOptions<CorrelationOptions> options,
+    ILogger<CorrelationMiddleware> logger) : IMiddleware
 {
-    private readonly ICorrelationContextAccessor _accessor;
-    private readonly IOptions<CorrelationOptions> _options;
-    private readonly ILogger<CorrelationMiddleware> _logger;
-
-    public CorrelationMiddleware(
-        ICorrelationContextAccessor accessor,
-        IOptions<CorrelationOptions> options,
-        ILogger<CorrelationMiddleware> logger)
-    {
-        _accessor = accessor;
-        _options = options;
-        _logger = logger;
-    }
+    private readonly ICorrelationContextAccessor _accessor = accessor;
+    private readonly IOptions<CorrelationOptions> _options = options;
+    private readonly ILogger<CorrelationMiddleware> _logger = logger;
 
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {

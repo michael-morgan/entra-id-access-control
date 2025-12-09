@@ -1,6 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using Api.Modules.AccessControl.Interfaces;
-using Api.Modules.AccessControl.Audit;
+using Api.Modules.AccessControl.Configuration;
 using Api.Modules.AccessControl.Authorization;
 using Api.Modules.AccessControl.BusinessEvents;
 using Api.Modules.AccessControl.Correlation;
@@ -15,7 +15,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 
-namespace Api.Modules.AccessControl.AspNetCore;
+namespace Api.Modules.AccessControl;
 
 /// <summary>
 /// Extension methods for registering all AccessControl framework services.
@@ -202,7 +202,7 @@ public static class ServiceCollectionExtensions
 
                         // Log all claims to verify oid is preserved
                         Console.WriteLine($"[JWT AUTH] All claims:");
-                        foreach (var claim in context.Principal?.Claims ?? Enumerable.Empty<System.Security.Claims.Claim>())
+                        foreach (var claim in context.Principal?.Claims ?? [])
                         {
                             Console.WriteLine($"  {claim.Type} = {claim.Value}");
                         }

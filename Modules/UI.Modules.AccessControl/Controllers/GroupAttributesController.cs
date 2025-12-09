@@ -11,21 +11,14 @@ namespace UI.Modules.AccessControl.Controllers;
 /// <summary>
 /// Controller for managing group attributes for ABAC.
 /// </summary>
-public class GroupAttributesController : Controller
+public class GroupAttributesController(
+    AccessControlDbContext context,
+    GraphGroupService graphGroupService,
+    ILogger<GroupAttributesController> logger) : Controller
 {
-    private readonly AccessControlDbContext _context;
-    private readonly GraphGroupService _graphGroupService;
-    private readonly ILogger<GroupAttributesController> _logger;
-
-    public GroupAttributesController(
-        AccessControlDbContext context,
-        GraphGroupService graphGroupService,
-        ILogger<GroupAttributesController> logger)
-    {
-        _context = context;
-        _graphGroupService = graphGroupService;
-        _logger = logger;
-    }
+    private readonly AccessControlDbContext _context = context;
+    private readonly GraphGroupService _graphGroupService = graphGroupService;
+    private readonly ILogger<GroupAttributesController> _logger = logger;
 
     // GET: GroupAttributes
     public async Task<IActionResult> Index(string? search = null)

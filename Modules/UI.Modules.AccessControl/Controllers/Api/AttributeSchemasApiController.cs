@@ -7,16 +7,10 @@ namespace UI.Modules.AccessControl.Controllers.Api;
 
 [ApiController]
 [Route("api/attribute-schemas")]
-public class AttributeSchemasApiController : ControllerBase
+public class AttributeSchemasApiController(AccessControlDbContext context, ILogger<AttributeSchemasApiController> logger) : ControllerBase
 {
-    private readonly AccessControlDbContext _context;
-    private readonly ILogger<AttributeSchemasApiController> _logger;
-
-    public AttributeSchemasApiController(AccessControlDbContext context, ILogger<AttributeSchemasApiController> logger)
-    {
-        _context = context;
-        _logger = logger;
-    }
+    private readonly AccessControlDbContext _context = context;
+    private readonly ILogger<AttributeSchemasApiController> _logger = logger;
 
     /// <summary>
     /// Get attribute schemas for a specific workstream and attribute level.

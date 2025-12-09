@@ -8,18 +8,12 @@ namespace Api.Modules.AccessControl.BusinessEvents;
 /// Publishes business events to the event store.
 /// Simplified version without outbox pattern - direct writes only.
 /// </summary>
-public class BusinessEventPublisher : IBusinessEventPublisher
+public class BusinessEventPublisher(
+    IBusinessEventStore eventStore,
+    ILogger<BusinessEventPublisher> logger) : IBusinessEventPublisher
 {
-    private readonly IBusinessEventStore _eventStore;
-    private readonly ILogger<BusinessEventPublisher> _logger;
-
-    public BusinessEventPublisher(
-        IBusinessEventStore eventStore,
-        ILogger<BusinessEventPublisher> logger)
-    {
-        _eventStore = eventStore;
-        _logger = logger;
-    }
+    private readonly IBusinessEventStore _eventStore = eventStore;
+    private readonly ILogger<BusinessEventPublisher> _logger = logger;
 
     public async Task PublishAsync<TEvent>(
         TEvent @event,

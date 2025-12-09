@@ -12,24 +12,16 @@ namespace Api.Modules.AccessControl.BusinessEvents;
 /// Stores business events in SQL Server with immutability enforced by trigger.
 /// NO hash chains - simplified version as per requirements.
 /// </summary>
-public class BusinessEventStore : IBusinessEventStore
+public class BusinessEventStore(
+    AccessControlDbContext context,
+    ICorrelationContextAccessor correlation,
+    ICurrentUserAccessor currentUser,
+    ILogger<BusinessEventStore> logger) : IBusinessEventStore
 {
-    private readonly AccessControlDbContext _context;
-    private readonly ICorrelationContextAccessor _correlation;
-    private readonly ICurrentUserAccessor _currentUser;
-    private readonly ILogger<BusinessEventStore> _logger;
-
-    public BusinessEventStore(
-        AccessControlDbContext context,
-        ICorrelationContextAccessor correlation,
-        ICurrentUserAccessor currentUser,
-        ILogger<BusinessEventStore> logger)
-    {
-        _context = context;
-        _correlation = correlation;
-        _currentUser = currentUser;
-        _logger = logger;
-    }
+    private readonly AccessControlDbContext _context = context;
+    private readonly ICorrelationContextAccessor _correlation = correlation;
+    private readonly ICurrentUserAccessor _currentUser = currentUser;
+    private readonly ILogger<BusinessEventStore> _logger = logger;
 
     public async Task<Guid> StoreAsync<TEvent>(
         TEvent @event,

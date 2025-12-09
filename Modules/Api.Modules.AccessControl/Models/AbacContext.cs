@@ -38,7 +38,7 @@ public sealed record AbacContext
     /// Merged with precedence: User > Role > Group.
     /// Examples: ApprovalLimit, ManagementLevel, Department, Region
     /// </summary>
-    public Dictionary<string, object> UserAttributes { get; init; } = new();
+    public Dictionary<string, object> UserAttributes { get; init; } = [];
 
     // ═══════════════════════════════════════════════════════════
     // DYNAMIC RESOURCE ATTRIBUTES (from entity properties)
@@ -48,7 +48,7 @@ public sealed record AbacContext
     /// Dynamic resource attributes extracted from entity via reflection.
     /// Examples: OwnerId, Region, Status, RequestedAmount, Classification
     /// </summary>
-    public Dictionary<string, object> ResourceAttributes { get; init; } = new();
+    public Dictionary<string, object> ResourceAttributes { get; init; } = [];
 
     // ═══════════════════════════════════════════════════════════
     // ENVIRONMENT ATTRIBUTES (computed at runtime)

@@ -10,21 +10,14 @@ namespace UI.Modules.AccessControl.Controllers;
 /// <summary>
 /// Controller for viewing business events and audit logs.
 /// </summary>
-public class EventsController : Controller
+public class EventsController(
+    IBusinessEventQueryService eventQueryService,
+    AccessControlDbContext auditContext,
+    ILogger<EventsController> logger) : Controller
 {
-    private readonly IBusinessEventQueryService _eventQueryService;
-    private readonly AccessControlDbContext _auditContext;
-    private readonly ILogger<EventsController> _logger;
-
-    public EventsController(
-        IBusinessEventQueryService eventQueryService,
-        AccessControlDbContext auditContext,
-        ILogger<EventsController> logger)
-    {
-        _eventQueryService = eventQueryService;
-        _auditContext = auditContext;
-        _logger = logger;
-    }
+    private readonly IBusinessEventQueryService _eventQueryService = eventQueryService;
+    private readonly AccessControlDbContext _auditContext = auditContext;
+    private readonly ILogger<EventsController> _logger = logger;
 
     // GET: Events
     public async Task<IActionResult> Index(

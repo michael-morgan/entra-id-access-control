@@ -16,18 +16,12 @@ namespace Api.Modules.DemoApi.Controllers;
 [ApiController]
 [Route("api/documents")]
 [Authorize]
-public class DocumentsController : ControllerBase
+public class DocumentsController(
+    IDocumentService documentService,
+    ILogger<DocumentsController> logger) : ControllerBase
 {
-    private readonly IDocumentService _documentService;
-    private readonly ILogger<DocumentsController> _logger;
-
-    public DocumentsController(
-        IDocumentService documentService,
-        ILogger<DocumentsController> logger)
-    {
-        _documentService = documentService;
-        _logger = logger;
-    }
+    private readonly IDocumentService _documentService = documentService;
+    private readonly ILogger<DocumentsController> _logger = logger;
 
     /// <summary>
     /// Get all documents (filtered by user's department).

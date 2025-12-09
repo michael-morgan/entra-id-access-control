@@ -6,7 +6,7 @@ namespace UI.Modules.AccessControl.Models;
 public class UserDetailsViewModel
 {
     public User User { get; set; } = null!;
-    public List<Group> Groups { get; set; } = new();
-    public List<UserAttribute> UserAttributes { get; set; } = new();
-    public List<string> RoleAssignments { get; set; } = new();
+    public List<Group> Groups { get; set; } = [];
+    public List<UserAttribute> UserAttributes { get; set; } = [];
+    public List<string> RoleAssignments { get; set; } = [];
 }

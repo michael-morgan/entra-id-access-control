@@ -8,16 +8,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace UI.Modules.AccessControl.Controllers;
 
-public class AbacRuleGroupsController : Controller
+public class AbacRuleGroupsController(AccessControlDbContext context, ILogger<AbacRuleGroupsController> logger) : Controller
 {
-    private readonly AccessControlDbContext _context;
-    private readonly ILogger<AbacRuleGroupsController> _logger;
-
-    public AbacRuleGroupsController(AccessControlDbContext context, ILogger<AbacRuleGroupsController> logger)
-    {
-        _context = context;
-        _logger = logger;
-    }
+    private readonly AccessControlDbContext _context = context;
+    private readonly ILogger<AbacRuleGroupsController> _logger = logger;
 
     // GET: AbacRuleGroups
     public async Task<IActionResult> Index(string? search = null)
@@ -224,7 +218,7 @@ public class AbacRuleGroupsController : Controller
         if (group != null)
         {
             // Check for child groups or rules
-            if (group.ChildGroups.Any() || group.Rules.Any())
+            if (group.ChildGroups.Count != 0 || group.Rules.Count != 0)
             {
                 ModelState.AddModelError("", "Cannot delete group with child groups or rules. Remove them first.");
                 return View(group);

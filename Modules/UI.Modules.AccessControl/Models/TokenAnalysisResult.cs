@@ -6,27 +6,27 @@ public class TokenAnalysisResult
     public string? ErrorMessage { get; set; }
 
     // Token Claims
-    public Dictionary<string, string> Claims { get; set; } = new();
+    public Dictionary<string, string> Claims { get; set; } = [];
     public string? UserId { get; set; }
     public string? UserName { get; set; }
     public string? Email { get; set; }
-    public List<string> Groups { get; set; } = new();
-    public List<string> Roles { get; set; } = new();
+    public List<string> Groups { get; set; } = [];
+    public List<string> Roles { get; set; } = [];
 
     // ABAC Attributes
-    public List<AttributeViewModel> UserAttributes { get; set; } = new();
-    public List<AttributeViewModel> RoleAttributes { get; set; } = new();
-    public List<AttributeViewModel> GroupAttributes { get; set; } = new();
+    public List<AttributeViewModel> UserAttributes { get; set; } = [];
+    public List<AttributeViewModel> RoleAttributes { get; set; } = [];
+    public List<AttributeViewModel> GroupAttributes { get; set; } = [];
 
     // Merged Attributes (with precedence applied)
-    public Dictionary<string, AttributeValue> MergedAttributes { get; set; } = new();
+    public Dictionary<string, AttributeValue> MergedAttributes { get; set; } = [];
 
     // RBAC Policies
-    public List<PolicySummary> ApplicablePolicies { get; set; } = new();
+    public List<PolicySummary> ApplicablePolicies { get; set; } = [];
 
     // ABAC Rules
-    public List<AbacRuleSummary> ApplicableAbacRules { get; set; } = new();
-    public List<AbacRuleGroupSummary> ApplicableRuleGroups { get; set; } = new();
+    public List<AbacRuleSummary> ApplicableAbacRules { get; set; } = [];
+    public List<AbacRuleGroupSummary> ApplicableRuleGroups { get; set; } = [];
 }
 
 public class AttributeViewModel

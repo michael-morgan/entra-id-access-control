@@ -10,14 +10,9 @@ namespace Api.Modules.AccessControl.Authorization;
 /// SQL Server adapter for Casbin that stores policies in the database.
 /// Custom implementation for loading policies.
 /// </summary>
-public class SqlServerCasbinAdapter
+public class SqlServerCasbinAdapter(AccessControlDbContext context)
 {
-    private readonly AccessControlDbContext _context;
-
-    public SqlServerCasbinAdapter(AccessControlDbContext context)
-    {
-        _context = context;
-    }
+    private readonly AccessControlDbContext _context = context;
 
     public void LoadPolicy(IEnforcer enforcer)
     {
@@ -78,12 +73,12 @@ public class SqlServerCasbinAdapter
         if (policy.PolicyType.StartsWith("g"))
         {
             // Grouping policy (role assignment) - use AddNamedGroupingPolicy for custom g types
-            enforcer.AddNamedGroupingPolicy(policy.PolicyType, valuesList.ToArray());
+            enforcer.AddNamedGroupingPolicy(policy.PolicyType, [.. valuesList]);
         }
         else
         {
             // Regular policy
-            enforcer.AddNamedPolicy(policy.PolicyType, valuesList.ToArray());
+            enforcer.AddNamedPolicy(policy.PolicyType, [.. valuesList]);
         }
     }
 
@@ -110,7 +105,7 @@ public class SqlServerCasbinAdapter
         throw new NotImplementedException("Use SavePolicyAsync for database operations");
     }
 
-    public async Task SavePolicyAsync(IPolicyStore store)
+    public static async Task SavePolicyAsync(IPolicyStore store)
     {
         // Note: This method is typically not needed for read-only policy loading from database
         // For this POC, policies are managed directly in the database via seed data

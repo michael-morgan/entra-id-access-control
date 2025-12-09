@@ -3,21 +3,23 @@ using Microsoft.Graph.Models;
 
 namespace UI.Modules.AccessControl.Services;
 
-public class GraphUserService
+public class GraphUserService(
+    GraphServiceClient graphServiceClient,
+    IConfiguration configuration,
+    ILogger<GraphUserService> logger)
 {
-    private readonly GraphServiceClient _graphClient;
-    private readonly ILogger<GraphUserService> _logger;
-    private readonly int _defaultPageSize;
-
-    public GraphUserService(
-        GraphServiceClient graphServiceClient,
-        IConfiguration configuration,
-        ILogger<GraphUserService> logger)
-    {
-        _graphClient = graphServiceClient;
-        _logger = logger;
-        _defaultPageSize = configuration.GetValue<int>("GraphApi:DefaultPageSize", 100);
-    }
+    private readonly GraphServiceClient _graphClient = graphServiceClient;
+    private readonly ILogger<GraphUserService> _logger = logger;
+    private readonly int _defaultPageSize = configuration.GetValue<int>("GraphApi:DefaultPageSize", 100);
+    private static readonly string[] requestConfiguration =
+                    [
+                        "id",
+                        "displayName",
+                        "userPrincipalName",
+                        "mail",
+                        "jobTitle",
+                        "department"
+                    ];
 
     /// <summary>
     /// Get all users with basic properties
@@ -31,17 +33,9 @@ public class GraphUserService
             var response = await _graphClient.Users
                 .GetAsync(requestConfig =>
                 {
-                    requestConfig.QueryParameters.Select = new[]
-                    {
-                        "id",
-                        "displayName",
-                        "userPrincipalName",
-                        "mail",
-                        "jobTitle",
-                        "department"
-                    };
+                    requestConfig.QueryParameters.Select = requestConfiguration;
                     requestConfig.QueryParameters.Top = _defaultPageSize;
-                    requestConfig.QueryParameters.Orderby = new[] { "displayName" };
+                    requestConfig.QueryParameters.Orderby = ["displayName"];
                 });
 
             if (response?.Value == null)
@@ -83,15 +77,7 @@ public class GraphUserService
             var user = await _graphClient.Users[userId]
                 .GetAsync(requestConfig =>
                 {
-                    requestConfig.QueryParameters.Select = new[]
-                    {
-                        "id",
-                        "displayName",
-                        "userPrincipalName",
-                        "mail",
-                        "jobTitle",
-                        "department"
-                    };
+                    requestConfig.QueryParameters.Select = requestConfiguration;
                 });
 
             return user;
@@ -120,15 +106,15 @@ public class GraphUserService
             var user = await _graphClient.Users[userId]
                 .GetAsync(requestConfig =>
                 {
-                    requestConfig.QueryParameters.Select = new[]
-                    {
+                    requestConfig.QueryParameters.Select =
+                    [
                         "id",
                         "displayName",
                         "userPrincipalName",
                         "mail",
                         "jobTitle",
                         "department"
-                    };
+                    ];
                 });
 
             if (user == null)
@@ -143,7 +129,7 @@ public class GraphUserService
                 .GraphGroup // Filter to only groups (not directory roles)
                 .GetAsync(requestConfig =>
                 {
-                    requestConfig.QueryParameters.Select = new[] { "id", "displayName", "description" };
+                    requestConfig.QueryParameters.Select = ["id", "displayName", "description"];
                     requestConfig.QueryParameters.Top = _defaultPageSize;
                 });
 
@@ -202,7 +188,7 @@ public class GraphUserService
 
             var groupIds = response?.Value;
 
-            return groupIds?.ToList() ?? new List<string>();
+            return groupIds?.ToList() ?? [];
         }
         catch (ServiceException ex)
         {
@@ -226,15 +212,15 @@ public class GraphUserService
                 {
                     // Use $search for fuzzy matching
                     requestConfig.QueryParameters.Search = $"\"displayName:{searchTerm}\" OR \"mail:{searchTerm}\"";
-                    requestConfig.QueryParameters.Select = new[]
-                    {
+                    requestConfig.QueryParameters.Select =
+                    [
                         "id",
                         "displayName",
                         "userPrincipalName",
                         "mail",
                         "jobTitle",
                         "department"
-                    };
+                    ];
                     requestConfig.QueryParameters.Top = _defaultPageSize;
 
                     // $search requires ConsistencyLevel header
@@ -275,7 +261,7 @@ public class GraphUserService
     {
         var result = new Dictionary<string, User>();
 
-        if (!userIds.Any())
+        if (userIds.Count == 0)
         {
             return result;
         }
@@ -294,13 +280,13 @@ public class GraphUserService
                 var tasks = batch.Select(userId =>
                     _graphClient.Users[userId].GetAsync(requestConfig =>
                     {
-                        requestConfig.QueryParameters.Select = new[]
-                        {
+                        requestConfig.QueryParameters.Select =
+                        [
                             "id",
                             "displayName",
                             "userPrincipalName",
                             "mail"
-                        };
+                        ];
                     }));
 
                 var users = await Task.WhenAll(tasks);
@@ -331,5 +317,5 @@ public class GraphUserService
 public class UserWithGroups
 {
     public User User { get; set; } = null!;
-    public List<Group> Groups { get; set; } = new();
+    public List<Group> Groups { get; set; } = [];
 }

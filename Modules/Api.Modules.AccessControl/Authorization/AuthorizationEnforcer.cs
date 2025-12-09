@@ -11,27 +11,18 @@ namespace Api.Modules.AccessControl.Authorization;
 /// <summary>
 /// Service-layer authorization enforcer using Casbin + ABAC.
 /// </summary>
-public class AuthorizationEnforcer : IAuthorizationEnforcer
+public class AuthorizationEnforcer(
+    IEnforcer casbinEnforcer,
+    IAbacContextProvider abacContextProvider,
+    IHttpContextAccessor httpContextAccessor,
+    ICorrelationContextAccessor correlationContextAccessor,
+    ILogger<AuthorizationEnforcer> logger) : IAuthorizationEnforcer
 {
-    private readonly IEnforcer _casbinEnforcer;
-    private readonly IAbacContextProvider _abacContextProvider;
-    private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly ICorrelationContextAccessor _correlationContextAccessor;
-    private readonly ILogger<AuthorizationEnforcer> _logger;
-
-    public AuthorizationEnforcer(
-        IEnforcer casbinEnforcer,
-        IAbacContextProvider abacContextProvider,
-        IHttpContextAccessor httpContextAccessor,
-        ICorrelationContextAccessor correlationContextAccessor,
-        ILogger<AuthorizationEnforcer> logger)
-    {
-        _casbinEnforcer = casbinEnforcer;
-        _abacContextProvider = abacContextProvider;
-        _httpContextAccessor = httpContextAccessor;
-        _correlationContextAccessor = correlationContextAccessor;
-        _logger = logger;
-    }
+    private readonly IEnforcer _casbinEnforcer = casbinEnforcer;
+    private readonly IAbacContextProvider _abacContextProvider = abacContextProvider;
+    private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+    private readonly ICorrelationContextAccessor _correlationContextAccessor = correlationContextAccessor;
+    private readonly ILogger<AuthorizationEnforcer> _logger = logger;
 
     public async Task<AuthorizationResult> CheckAsync(
         string resource,
@@ -130,7 +121,7 @@ public class AuthorizationEnforcer : IAuthorizationEnforcer
             }
 
             // If user-based check fails, try group-based authorization
-            if (!allowed && groupClaims.Any())
+            if (!allowed && groupClaims.Count != 0)
             {
                 Console.WriteLine($"[CASBIN DEBUG] Checking {groupClaims.Count} groups for authorization...");
 

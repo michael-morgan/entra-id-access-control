@@ -11,22 +11,15 @@ namespace Api.Modules.AccessControl.Authorization;
 /// <summary>
 /// Stores and retrieves group attributes with caching.
 /// </summary>
-public class SqlGroupAttributeStore : IGroupAttributeStore
+public class SqlGroupAttributeStore(
+    AccessControlDbContext context,
+    IMemoryCache cache,
+    ILogger<SqlGroupAttributeStore> logger) : IGroupAttributeStore
 {
-    private readonly AccessControlDbContext _context;
-    private readonly IMemoryCache _cache;
-    private readonly ILogger<SqlGroupAttributeStore> _logger;
+    private readonly AccessControlDbContext _context = context;
+    private readonly IMemoryCache _cache = cache;
+    private readonly ILogger<SqlGroupAttributeStore> _logger = logger;
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(15);
-
-    public SqlGroupAttributeStore(
-        AccessControlDbContext context,
-        IMemoryCache cache,
-        ILogger<SqlGroupAttributeStore> logger)
-    {
-        _context = context;
-        _cache = cache;
-        _logger = logger;
-    }
 
     public async Task<GroupAttributes?> GetAttributesAsync(
         string groupId,
@@ -147,16 +140,16 @@ public class SqlGroupAttributeStore : IGroupAttributeStore
     private static Dictionary<string, JsonElement> DeserializeAttributes(string? json)
     {
         if (string.IsNullOrWhiteSpace(json))
-            return new Dictionary<string, JsonElement>();
+            return [];
 
         try
         {
             return JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)
-                ?? new Dictionary<string, JsonElement>();
+                ?? [];
         }
         catch
         {
-            return new Dictionary<string, JsonElement>();
+            return [];
         }
     }
 

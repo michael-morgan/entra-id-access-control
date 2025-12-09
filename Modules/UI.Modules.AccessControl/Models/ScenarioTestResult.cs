@@ -7,8 +7,8 @@ public class ScenarioTestResult
     public bool Success { get; set; }
     public bool IsAuthorized { get; set; }  // Overall authorization result
     public string Decision { get; set; } = string.Empty;
-    public List<AuthorizationTestResult> TestResults { get; set; } = new();
-    public List<AuthorizationStep> EvaluationTrace { get; set; } = new();  // Combined trace from all steps
+    public List<AuthorizationTestResult> TestResults { get; set; } = [];
+    public List<AuthorizationStep> EvaluationTrace { get; set; } = [];  // Combined trace from all steps
     public int PassedTests { get; set; }
     public int FailedTests { get; set; }
     public int TotalTests { get; set; }
@@ -19,7 +19,7 @@ public class TestScenario
 {
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
-    public List<TestCase> TestCases { get; set; } = new();
+    public List<TestCase> TestCases { get; set; } = [];
 }
 
 public class TestCase

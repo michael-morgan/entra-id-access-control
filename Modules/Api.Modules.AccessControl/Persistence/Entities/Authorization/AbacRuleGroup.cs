@@ -84,6 +84,6 @@ public class AbacRuleGroup
     [ForeignKey(nameof(ParentGroupId))]
     public AbacRuleGroup? ParentGroup { get; set; }
 
-    public ICollection<AbacRuleGroup> ChildGroups { get; set; } = new List<AbacRuleGroup>();
-    public ICollection<AbacRule> Rules { get; set; } = new List<AbacRule>();
+    public ICollection<AbacRuleGroup> ChildGroups { get; set; } = [];
+    public ICollection<AbacRule> Rules { get; set; } = [];
 }

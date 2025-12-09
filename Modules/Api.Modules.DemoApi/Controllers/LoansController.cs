@@ -12,18 +12,12 @@ namespace Api.Modules.DemoApi.Controllers;
 [ApiController]
 [Route("api/loans")]
 [Authorize]
-public class LoansController : ControllerBase
+public class LoansController(
+    ILoanService loanService,
+    ILogger<LoansController> logger) : ControllerBase
 {
-    private readonly ILoanService _loanService;
-    private readonly ILogger<LoansController> _logger;
-
-    public LoansController(
-        ILoanService loanService,
-        ILogger<LoansController> logger)
-    {
-        _loanService = loanService;
-        _logger = logger;
-    }
+    private readonly ILoanService _loanService = loanService;
+    private readonly ILogger<LoansController> _logger = logger;
 
     /// <summary>
     /// Get all loans (filtered by user's region via ABAC).

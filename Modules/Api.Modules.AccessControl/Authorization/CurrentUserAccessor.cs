@@ -9,22 +9,15 @@ namespace Api.Modules.AccessControl.Authorization;
 /// <summary>
 /// Provides access to the current authenticated user.
 /// </summary>
-public class CurrentUserAccessor : ICurrentUserAccessor
+public class CurrentUserAccessor(
+    IHttpContextAccessor httpContextAccessor,
+    ICorrelationContextAccessor correlationContextAccessor,
+    IUserAttributeStore userAttributeStore) : ICurrentUserAccessor
 {
-    private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly ICorrelationContextAccessor _correlationContextAccessor;
-    private readonly IUserAttributeStore _userAttributeStore;
+    private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+    private readonly ICorrelationContextAccessor _correlationContextAccessor = correlationContextAccessor;
+    private readonly IUserAttributeStore _userAttributeStore = userAttributeStore;
     private CurrentUser? _cachedUser;
-
-    public CurrentUserAccessor(
-        IHttpContextAccessor httpContextAccessor,
-        ICorrelationContextAccessor correlationContextAccessor,
-        IUserAttributeStore userAttributeStore)
-    {
-        _httpContextAccessor = httpContextAccessor;
-        _correlationContextAccessor = correlationContextAccessor;
-        _userAttributeStore = userAttributeStore;
-    }
 
     public CurrentUser User
     {
@@ -71,7 +64,7 @@ public class CurrentUserAccessor : ICurrentUserAccessor
                 Type = UserType.User,
                 IpAddress = httpContext.Connection.RemoteIpAddress?.ToString(),
                 WorkstreamId = workstreamId,
-                Regions = region != null ? new[] { region } : Array.Empty<string>(),
+                Regions = region != null ? [region] : [],
                 HasGlobalAccess = region == "ALL"
             };
 
@@ -83,7 +76,7 @@ public class CurrentUserAccessor : ICurrentUserAccessor
         _correlationContextAccessor.Context?.WorkstreamId
         ?? throw new InvalidOperationException("Workstream context not available");
 
-    public string[] Regions => User.Regions ?? Array.Empty<string>();
+    public string[] Regions => User.Regions ?? [];
 
     public bool HasGlobalAccess => User.HasGlobalAccess;
 }
