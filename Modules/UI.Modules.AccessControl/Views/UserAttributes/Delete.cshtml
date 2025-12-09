@@ -12,14 +12,18 @@
 </div>
 
 <div>
-    <h4>User Attributes for @Model.UserId</h4>
+    <h4>User Attributes for @ViewBag.UserDisplayName</h4>
     <hr />
     <dl class="row">
         <dt class="col-sm-3">
-            @Html.DisplayNameFor(model => model.UserId)
+            User
         </dt>
         <dd class="col-sm-9">
-            <code>@Html.DisplayFor(model => model.UserId)</code>
+            @ViewBag.UserDisplayName
+            @if (ViewBag.UserDisplayName != Model.UserId)
+            {
+                <br /><small class="text-muted">User ID: <code>@Model.UserId</code></small>
+            }
         </dd>
         <dt class="col-sm-3">
             @Html.DisplayNameFor(model => model.WorkstreamId)

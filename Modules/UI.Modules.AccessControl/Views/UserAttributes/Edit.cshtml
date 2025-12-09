@@ -6,7 +6,11 @@
 
 <h2>Edit User Attributes</h2>
 
-<h4>User: @Model.UserId</h4>
+<h4>User: @ViewBag.UserDisplayName</h4>
+@if (ViewBag.UserDisplayName != Model.UserId)
+{
+    <p class="text-muted small">User ID: <code>@Model.UserId</code></p>
+}
 <hr />
 <div class="row">
     <div class="col-md-8">

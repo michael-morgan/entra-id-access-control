@@ -3,6 +3,7 @@ using Api.Modules.AccessControl.Persistence.Entities.Authorization;
 using Casbin;
 using Casbin.Model;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Api.Modules.AccessControl.Authorization;
 
@@ -10,9 +11,12 @@ namespace Api.Modules.AccessControl.Authorization;
 /// SQL Server adapter for Casbin that stores policies in the database.
 /// Custom implementation for loading policies.
 /// </summary>
-public class SqlServerCasbinAdapter(AccessControlDbContext context)
+public class SqlServerCasbinAdapter(
+    AccessControlDbContext context,
+    ILogger<SqlServerCasbinAdapter> logger)
 {
     private readonly AccessControlDbContext _context = context;
+    private readonly ILogger<SqlServerCasbinAdapter> _logger = logger;
 
     public void LoadPolicy(IEnforcer enforcer)
     {
@@ -21,11 +25,12 @@ public class SqlServerCasbinAdapter(AccessControlDbContext context)
             .AsNoTracking()
             .ToList();
 
-        Console.WriteLine($"[CASBIN DEBUG] Loaded {policies.Count} policies from database");
+        _logger.LogInformation("Loaded {PolicyCount} active policies from database", policies.Count);
 
         foreach (var policy in policies)
         {
-            Console.WriteLine($"[CASBIN DEBUG] Policy: type={policy.PolicyType}, v0={policy.V0}, v1={policy.V1}, v2={policy.V2}, v3={policy.V3}, v4={policy.V4}");
+            _logger.LogDebug("Loading policy - Type: {PolicyType}, Subject: {V0}, Workstream: {V1}, Resource: {V2}",
+                policy.PolicyType, policy.V0, policy.V1, policy.V2);
             LoadPolicyLine(policy, enforcer);
         }
     }
@@ -37,11 +42,12 @@ public class SqlServerCasbinAdapter(AccessControlDbContext context)
             .AsNoTracking()
             .ToList();
 
-        Console.WriteLine($"[CASBIN DEBUG] Loaded {policies.Count} policies from database");
+        _logger.LogInformation("Loaded {PolicyCount} active policies from database", policies.Count);
 
         foreach (var policy in policies)
         {
-            Console.WriteLine($"[CASBIN DEBUG] Policy: type={policy.PolicyType}, v0={policy.V0}, v1={policy.V1}, v2={policy.V2}, v3={policy.V3}, v4={policy.V4}");
+            _logger.LogDebug("Loading policy - Type: {PolicyType}, Subject: {V0}, Workstream: {V1}, Resource: {V2}",
+                policy.PolicyType, policy.V0, policy.V1, policy.V2);
             LoadPolicyLine(policy, store);
         }
     }

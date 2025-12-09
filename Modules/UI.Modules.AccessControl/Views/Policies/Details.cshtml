@@ -26,7 +26,18 @@
             V0 (Subject)
         </dt>
         <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.V0)
+            @{
+                var subjectNames = ViewBag.SubjectNames as Dictionary<string, string> ?? new Dictionary<string, string>();
+                if (subjectNames.TryGetValue(Model.V0, out var v0Name))
+                {
+                    @v0Name
+                    <br /><small class="text-muted">ID: <code>@Model.V0</code></small>
+                }
+                else
+                {
+                    @Model.V0
+                }
+            }
         </dd>
         @if (!string.IsNullOrWhiteSpace(Model.V1))
         {
@@ -34,7 +45,17 @@
                 V1 (Object)
             </dt>
             <dd class="col-sm-10">
-                @Html.DisplayFor(model => model.V1)
+                @{
+                    if (subjectNames.TryGetValue(Model.V1, out var v1Name))
+                    {
+                        @v1Name
+                        <br /><small class="text-muted">ID: <code>@Model.V1</code></small>
+                    }
+                    else
+                    {
+                        @Model.V1
+                    }
+                }
             </dd>
         }
         @if (!string.IsNullOrWhiteSpace(Model.V2))

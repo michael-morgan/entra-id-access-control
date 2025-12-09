@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Api.Modules.AccessControl;
@@ -46,6 +47,19 @@ public static class ServiceCollectionExtensions
             configuration.GetSection("AccessControl:Correlation"));
 
         // ═══════════════════════════════════════════════════════════════════════
+        // REPOSITORIES
+        // ═══════════════════════════════════════════════════════════════════════
+        services.AddScoped<Persistence.Repositories.Authorization.IPolicyRepository, Persistence.Repositories.Authorization.PolicyRepository>();
+        services.AddScoped<Persistence.Repositories.Authorization.IRoleRepository, Persistence.Repositories.Authorization.RoleRepository>();
+        services.AddScoped<Persistence.Repositories.Authorization.IResourceRepository, Persistence.Repositories.Authorization.ResourceRepository>();
+        services.AddScoped<Persistence.Repositories.Attributes.IGroupAttributeRepository, Persistence.Repositories.Attributes.GroupAttributeRepository>();
+        services.AddScoped<Persistence.Repositories.Attributes.IUserAttributeRepository, Persistence.Repositories.Attributes.UserAttributeRepository>();
+        services.AddScoped<Persistence.Repositories.AbacRules.IAbacRuleGroupRepository, Persistence.Repositories.AbacRules.AbacRuleGroupRepository>();
+        services.AddScoped<Persistence.Repositories.AbacRules.IAbacRuleRepository, Persistence.Repositories.AbacRules.AbacRuleRepository>();
+        services.AddScoped<Persistence.Repositories.Authorization.IAttributeSchemaRepository, Persistence.Repositories.Authorization.AttributeSchemaRepository>();
+        services.AddScoped<Persistence.Repositories.Attributes.IRoleAttributeRepository, Persistence.Repositories.Attributes.RoleAttributeRepository>();
+
+        // ═══════════════════════════════════════════════════════════════════════
         // AUTHORIZATION
         // ═══════════════════════════════════════════════════════════════════════
 
@@ -53,36 +67,48 @@ public static class ServiceCollectionExtensions
         services.AddScoped<SqlServerCasbinAdapter>();
         services.AddScoped<IEnforcer>(sp =>
         {
-            Console.WriteLine("[CASBIN DEBUG] IEnforcer factory called - creating new enforcer");
+            var logger = sp.GetRequiredService<ILogger<IEnforcer>>();
+            logger.LogDebug("Creating new Casbin enforcer instance");
 
             var casbinModelPath = configuration["AccessControl:Authorization:CasbinModelPath"]
                 ?? "casbin-model.conf";
 
             var model = DefaultModel.CreateFromFile(casbinModelPath);
-            Console.WriteLine("[CASBIN DEBUG] Model loaded from file");
+            logger.LogDebug("Casbin model loaded from {ModelPath}", casbinModelPath);
 
             // Create enforcer with model
             var enforcer = new Enforcer(model);
-            Console.WriteLine("[CASBIN DEBUG] Enforcer created");
+            logger.LogDebug("Casbin enforcer instance created");
 
             // Load policies directly into enforcer from database
             var adapter = sp.GetRequiredService<SqlServerCasbinAdapter>();
-            Console.WriteLine("[CASBIN DEBUG] Adapter retrieved, loading policies...");
+            logger.LogDebug("Loading policies from database via adapter");
 
             // Load policies into the enforcer's internal policy store
             adapter.LoadPolicy(enforcer);
-            Console.WriteLine("[CASBIN DEBUG] Policies loaded into enforcer");
+            logger.LogDebug("Policies loaded into enforcer");
 
             // Register ABAC functions
             enforcer.AddFunction("evalContext", (Func<string, string, string, string, string, bool>)CasbinAbacFunctions.EvalContext);
             enforcer.AddFunction("evalAbacRules", (Func<string, string, string, string, bool>)CasbinAbacFunctions.EvalAbacRules);
-            Console.WriteLine("[CASBIN DEBUG] ABAC functions registered");
+            logger.LogDebug("ABAC functions registered with Casbin enforcer");
 
-            Console.WriteLine("[CASBIN DEBUG] IEnforcer factory complete");
+            logger.LogInformation("Casbin enforcer initialized successfully");
             return enforcer;
         });
 
+        // Policy engine abstraction (decouples from Casbin)
+        services.AddScoped<IPolicyEngine, CasbinPolicyEngine>();
+
+        // ABAC evaluation service (replaces Service Locator anti-pattern)
+        services.AddScoped<IAbacEvaluationService, AbacEvaluationService>();
+
+        // ABAC context building services (SRP-compliant specialized services)
+        services.AddScoped<IAttributeMerger, AttributeMerger>();
+        services.AddScoped<IResourceAttributeExtractor, ResourceAttributeExtractor>();
+        services.AddScoped<IEnvironmentContextProvider, EnvironmentContextProvider>();
         services.AddScoped<IAbacContextProvider, DefaultAbacContextProvider>();
+
         services.AddScoped<IAuthorizationEnforcer, AuthorizationEnforcer>();
         services.AddScoped<IAuthorizationHandler, CasbinAuthorizationHandler>();
         services.AddScoped<IUserAttributeStore, SqlUserAttributeStore>();
@@ -170,9 +196,9 @@ public static class ServiceCollectionExtensions
                 {
                     ValidateIssuer = true,
                     ValidateAudience = true,
-                    ValidateLifetime = false, // Disabled for testing due to clock skew issues
+                    ValidateLifetime = true, // Enabled for security - validates token expiration
                     ValidateIssuerSigningKey = true,
-                    ClockSkew = TimeSpan.FromMinutes(5),
+                    ClockSkew = TimeSpan.FromMinutes(5), // Allow 5 minutes clock skew for distributed systems
                     // Accept both v1.0 and v2.0 tokens
                     ValidIssuers = new[]
                     {
@@ -190,28 +216,23 @@ public static class ServiceCollectionExtensions
                 {
                     OnAuthenticationFailed = context =>
                     {
-                        Console.WriteLine($"[JWT AUTH] Authentication failed: {context.Exception.Message}");
-                        Console.WriteLine($"[JWT AUTH] Exception details: {context.Exception}");
+                        var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<JwtBearerEvents>>();
+                        logger.LogWarning("JWT authentication failed: {Message}", context.Exception.Message);
+                        logger.LogDebug(context.Exception, "JWT authentication failure details");
                         return Task.CompletedTask;
                     },
                     OnTokenValidated = context =>
                     {
-                        Console.WriteLine($"[JWT AUTH] Token validated successfully");
-                        Console.WriteLine($"[JWT AUTH] Audience: {string.Join(", ", context.Principal?.Claims.Where(c => c.Type == "aud").Select(c => c.Value) ?? Array.Empty<string>())}");
-                        Console.WriteLine($"[JWT AUTH] Issuer: {string.Join(", ", context.Principal?.Claims.Where(c => c.Type == "iss").Select(c => c.Value) ?? Array.Empty<string>())}");
-
-                        // Log all claims to verify oid is preserved
-                        Console.WriteLine($"[JWT AUTH] All claims:");
-                        foreach (var claim in context.Principal?.Claims ?? [])
-                        {
-                            Console.WriteLine($"  {claim.Type} = {claim.Value}");
-                        }
-
+                        var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<JwtBearerEvents>>();
+                        var subject = context.Principal?.FindFirst("sub")?.Value ?? context.Principal?.FindFirst("oid")?.Value;
+                        logger.LogInformation("JWT token validated successfully for subject: {Subject}", subject);
+                        logger.LogDebug("Token validation complete");
                         return Task.CompletedTask;
                     },
                     OnMessageReceived = context =>
                     {
-                        Console.WriteLine($"[JWT AUTH] Token received, validating...");
+                        var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<JwtBearerEvents>>();
+                        logger.LogDebug("JWT token received, beginning validation");
                         return Task.CompletedTask;
                     }
                 };

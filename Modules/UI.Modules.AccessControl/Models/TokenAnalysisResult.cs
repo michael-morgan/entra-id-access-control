@@ -10,7 +10,8 @@ public class TokenAnalysisResult
     public string? UserId { get; set; }
     public string? UserName { get; set; }
     public string? Email { get; set; }
-    public List<string> Groups { get; set; } = [];
+    public List<string> Groups { get; set; } = []; // Group OIDs (for backward compatibility)
+    public List<GroupReference> GroupsWithNames { get; set; } = []; // Groups with friendly names
     public List<string> Roles { get; set; } = [];
 
     // ABAC Attributes
@@ -35,6 +36,7 @@ public class AttributeViewModel
     public string Value { get; set; } = string.Empty;
     public string Source { get; set; } = string.Empty; // "User", "Role", "Group"
     public string? EntityId { get; set; } // The specific user/role/group ID
+    public string? EntityName { get; set; } // Friendly name for the entity (user display name, group name, role name)
 }
 
 public class AttributeValue
@@ -42,6 +44,13 @@ public class AttributeValue
     public string Value { get; set; } = string.Empty;
     public string Source { get; set; } = string.Empty; // "User", "Role", "Group"
     public string? EntityId { get; set; }
+    public string? EntityName { get; set; } // Friendly name for the entity
+}
+
+public class GroupReference
+{
+    public required string Id { get; init; } // Group OID
+    public required string DisplayName { get; init; } // Friendly group name
 }
 
 public class PolicySummary

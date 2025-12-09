@@ -8,7 +8,15 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web;
 using Microsoft.Identity.Web.UI;
 using UI.Modules.AccessControl.Middleware;
-using UI.Modules.AccessControl.Services;
+using UI.Modules.AccessControl.Services.Graph;
+using UI.Modules.AccessControl.Services.Testing;
+using UI.Modules.AccessControl.Services.Attributes;
+using UI.Modules.AccessControl.Services.Authorization.Policies;
+using UI.Modules.AccessControl.Services.Authorization.Roles;
+using UI.Modules.AccessControl.Services.Authorization.Resources;
+using UI.Modules.AccessControl.Services.Authorization.AbacRules;
+using UI.Modules.AccessControl.Services.Authorization.Users;
+using UI.Modules.AccessControl.Services.Audit;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -47,6 +55,16 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddControllersWithViews()
     .AddMicrosoftIdentityUI();
 
+// Configure anti-forgery for CSRF protection
+builder.Services.AddAntiforgery(options =>
+{
+    options.HeaderName = "X-CSRF-TOKEN";
+    options.Cookie.Name = "X-CSRF-TOKEN";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Strict;
+});
+
 // Add session support for workstream context
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
@@ -56,6 +74,9 @@ builder.Services.AddSession(options =>
     options.Cookie.IsEssential = true;
 });
 
+// Add memory cache for Graph API caching
+builder.Services.AddMemoryCache();
+
 // Add unified database context
 builder.Services.AddDbContext<AccessControlDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("AccessControlDb")));
@@ -63,9 +84,43 @@ builder.Services.AddDbContext<AccessControlDbContext>(options =>
 // Add business event query service
 builder.Services.AddScoped<IBusinessEventQueryService, BusinessEventQueryService>();
 
-// Add Graph API services
+// Add repositories
+builder.Services.AddScoped<Api.Modules.AccessControl.Persistence.Repositories.Authorization.IPolicyRepository, Api.Modules.AccessControl.Persistence.Repositories.Authorization.PolicyRepository>();
+builder.Services.AddScoped<Api.Modules.AccessControl.Persistence.Repositories.Authorization.IRoleRepository, Api.Modules.AccessControl.Persistence.Repositories.Authorization.RoleRepository>();
+builder.Services.AddScoped<Api.Modules.AccessControl.Persistence.Repositories.Authorization.IResourceRepository, Api.Modules.AccessControl.Persistence.Repositories.Authorization.ResourceRepository>();
+builder.Services.AddScoped<Api.Modules.AccessControl.Persistence.Repositories.Attributes.IGroupAttributeRepository, Api.Modules.AccessControl.Persistence.Repositories.Attributes.GroupAttributeRepository>();
+builder.Services.AddScoped<Api.Modules.AccessControl.Persistence.Repositories.Attributes.IUserAttributeRepository, Api.Modules.AccessControl.Persistence.Repositories.Attributes.UserAttributeRepository>();
+builder.Services.AddScoped<Api.Modules.AccessControl.Persistence.Repositories.AbacRules.IAbacRuleGroupRepository, Api.Modules.AccessControl.Persistence.Repositories.AbacRules.AbacRuleGroupRepository>();
+builder.Services.AddScoped<Api.Modules.AccessControl.Persistence.Repositories.AbacRules.IAbacRuleRepository, Api.Modules.AccessControl.Persistence.Repositories.AbacRules.AbacRuleRepository>();
+builder.Services.AddScoped<Api.Modules.AccessControl.Persistence.Repositories.Authorization.IAttributeSchemaRepository, Api.Modules.AccessControl.Persistence.Repositories.Authorization.AttributeSchemaRepository>();
+builder.Services.AddScoped<Api.Modules.AccessControl.Persistence.Repositories.Attributes.IRoleAttributeRepository, Api.Modules.AccessControl.Persistence.Repositories.Attributes.RoleAttributeRepository>();
+builder.Services.AddScoped<Api.Modules.AccessControl.Persistence.Repositories.Audit.IAuditLogRepository, Api.Modules.AccessControl.Persistence.Repositories.Audit.AuditLogRepository>();
+
+// Add management services
+builder.Services.AddScoped<IPolicyManagementService, PolicyManagementService>();
+builder.Services.AddScoped<IRoleManagementService, RoleManagementService>();
+builder.Services.AddScoped<IGroupAttributeManagementService, GroupAttributeManagementService>();
+builder.Services.AddScoped<IUserAttributeManagementService, UserAttributeManagementService>();
+builder.Services.AddScoped<IResourceManagementService, ResourceManagementService>();
+builder.Services.AddScoped<IAbacRuleGroupManagementService, AbacRuleGroupManagementService>();
+builder.Services.AddScoped<IAbacRuleManagementService, AbacRuleManagementService>();
+builder.Services.AddScoped<IAttributeSchemaManagementService, AttributeSchemaManagementService>();
+builder.Services.AddScoped<IRoleAttributeManagementService, RoleAttributeManagementService>();
+builder.Services.AddScoped<IAuditLogService, AuditLogService>();
+builder.Services.AddScoped<IUserManagementService, UserManagementService>();
+
+// Add Graph API services (base services)
 builder.Services.AddScoped<GraphUserService>();
 builder.Services.AddScoped<GraphGroupService>();
+
+// Add cached Graph API services (wrappers with caching)
+builder.Services.AddScoped<CachedGraphUserService>();
+builder.Services.AddScoped<CachedGraphGroupService>();
+
+// Add testing services for TestController
+builder.Services.AddScoped<ITokenAnalysisService, TokenAnalysisService>();
+builder.Services.AddScoped<IAuthorizationTestingService, AuthorizationTestingService>();
+builder.Services.AddScoped<IScenarioTestingService, ScenarioTestingService>();
 
 var app = builder.Build();
 
@@ -85,9 +140,16 @@ using (var scope = app.Services.CreateScope())
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
+    // Production: Use safe error handler that doesn't expose stack traces
     app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+
+    // HSTS: Force HTTPS for security (31536000 seconds = 1 year)
     app.UseHsts();
+}
+else
+{
+    // Development: Show detailed error page with stack traces
+    app.UseDeveloperExceptionPage();
 }
 
 app.UseHttpsRedirection();

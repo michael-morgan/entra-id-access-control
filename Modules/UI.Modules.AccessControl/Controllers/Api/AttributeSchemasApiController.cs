@@ -1,15 +1,16 @@
-using Api.Modules.AccessControl.Persistence;
-
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using UI.Modules.AccessControl.Services;
+using UI.Modules.AccessControl.Services.Attributes;
 
 namespace UI.Modules.AccessControl.Controllers.Api;
 
 [ApiController]
 [Route("api/attribute-schemas")]
-public class AttributeSchemasApiController(AccessControlDbContext context, ILogger<AttributeSchemasApiController> logger) : ControllerBase
+public class AttributeSchemasApiController(
+    IAttributeSchemaManagementService schemaManagementService,
+    ILogger<AttributeSchemasApiController> logger) : ControllerBase
 {
-    private readonly AccessControlDbContext _context = context;
+    private readonly IAttributeSchemaManagementService _schemaManagementService = schemaManagementService;
     private readonly ILogger<AttributeSchemasApiController> _logger = logger;
 
     /// <summary>
@@ -25,26 +26,23 @@ public class AttributeSchemasApiController(AccessControlDbContext context, ILogg
             return BadRequest("WorkstreamId and AttributeLevel are required");
         }
 
-        var schemas = await _context.AttributeSchemas
-            .Where(s => s.WorkstreamId == workstreamId && s.AttributeLevel == attributeLevel && s.IsActive)
-            .OrderBy(s => s.DisplayOrder)
-            .ThenBy(s => s.AttributeName)
-            .Select(s => new
-            {
-                s.AttributeName,
-                s.AttributeDisplayName,
-                s.DataType,
-                s.IsRequired,
-                s.DefaultValue,
-                s.ValidationRules,
-                s.Description,
-                s.DisplayOrder
-            })
-            .ToListAsync();
+        var schemas = await _schemaManagementService.GetActiveSchemasForLevelAsync(workstreamId, attributeLevel);
+
+        var result = schemas.Select(s => new
+        {
+            s.AttributeName,
+            s.AttributeDisplayName,
+            s.DataType,
+            s.IsRequired,
+            s.DefaultValue,
+            s.ValidationRules,
+            s.Description,
+            s.DisplayOrder
+        });
 
         _logger.LogInformation("Retrieved {Count} attribute schemas for workstream={Workstream}, level={Level}",
-            schemas.Count, workstreamId, attributeLevel);
+            schemas.Count(), workstreamId, attributeLevel);
 
-        return Ok(schemas);
+        return Ok(result);
     }
 }

@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Api.Modules.AccessControl.Interfaces;
 using Api.Modules.AccessControl.Models;
-using Casbin;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System.Linq;
@@ -9,16 +8,16 @@ using System.Linq;
 namespace Api.Modules.AccessControl.Authorization;
 
 /// <summary>
-/// Service-layer authorization enforcer using Casbin + ABAC.
+/// Service-layer authorization enforcer using policy engine + ABAC.
 /// </summary>
 public class AuthorizationEnforcer(
-    IEnforcer casbinEnforcer,
+    IPolicyEngine policyEngine,
     IAbacContextProvider abacContextProvider,
     IHttpContextAccessor httpContextAccessor,
     ICorrelationContextAccessor correlationContextAccessor,
     ILogger<AuthorizationEnforcer> logger) : IAuthorizationEnforcer
 {
-    private readonly IEnforcer _casbinEnforcer = casbinEnforcer;
+    private readonly IPolicyEngine _policyEngine = policyEngine;
     private readonly IAbacContextProvider _abacContextProvider = abacContextProvider;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
     private readonly ICorrelationContextAccessor _correlationContextAccessor = correlationContextAccessor;
@@ -98,56 +97,57 @@ public class AuthorizationEnforcer(
             // Extract all group IDs from JWT token
             var groupClaims = user.FindAll("groups").Select(c => c.Value).ToList();
 
-            Console.WriteLine($"[CASBIN DEBUG] oid claim: {oidClaim}, sub claim: {subClaim}");
-            Console.WriteLine($"[CASBIN DEBUG] User subject: {subject}");
-            Console.WriteLine($"[CASBIN DEBUG] User groups: {string.Join(", ", groupClaims)}");
-            Console.WriteLine($"[CASBIN DEBUG] Enforce params: workstream={workstreamId}, res={resource}, act={action}");
+            _logger.LogDebug("Starting authorization check for subject: {Subject} with {GroupCount} groups",
+                subject, groupClaims.Count);
+            _logger.LogDebug("Authorization parameters - Workstream: {Workstream}, Resource: {Resource}, Action: {Action}",
+                workstreamId, resource, action);
 
             // Try authorization with user ID first (fallback for legacy policies)
-            var allowed = _casbinEnforcer.Enforce(
+            var allowed = _policyEngine.Enforce(
                 subject,
                 workstreamId,
                 resource,
                 action,
                 contextJson);
 
-            Console.WriteLine($"[CASBIN DEBUG] User-based authorization: {allowed}");
+            _logger.LogDebug("User-based authorization result: {Allowed}", allowed);
 
             // Debug: Check if roles exist for the group
             foreach (var groupId in groupClaims)
             {
-                var rolesForGroup = _casbinEnforcer.GetRolesForUser(groupId, workstreamId);
-                Console.WriteLine($"[CASBIN DEBUG] Roles for group {groupId}: {string.Join(", ", rolesForGroup)}");
+                var rolesForGroup = _policyEngine.GetRolesForSubject(groupId, workstreamId);
+                _logger.LogDebug("Group {GroupId} has {RoleCount} roles in workstream {Workstream}",
+                    groupId, rolesForGroup.Count(), workstreamId);
             }
 
             // If user-based check fails, try group-based authorization
             if (!allowed && groupClaims.Count != 0)
             {
-                Console.WriteLine($"[CASBIN DEBUG] Checking {groupClaims.Count} groups for authorization...");
+                _logger.LogDebug("Checking {GroupCount} groups for authorization", groupClaims.Count);
 
                 foreach (var groupId in groupClaims)
                 {
-                    Console.WriteLine($"[CASBIN DEBUG] Checking group: {groupId}");
+                    _logger.LogDebug("Evaluating authorization for group: {GroupId}", groupId);
 
-                    var groupAllowed = _casbinEnforcer.Enforce(
+                    var groupAllowed = _policyEngine.Enforce(
                         groupId,
                         workstreamId,
                         resource,
                         action,
                         contextJson);
 
-                    Console.WriteLine($"[CASBIN DEBUG] Group '{groupId}' authorization: {groupAllowed}");
+                    _logger.LogDebug("Group {GroupId} authorization result: {Allowed}", groupId, groupAllowed);
 
                     if (groupAllowed)
                     {
                         allowed = true;
-                        Console.WriteLine($"[CASBIN DEBUG] Authorization GRANTED via group: {groupId}");
+                        _logger.LogInformation("Authorization granted via group: {GroupId}", groupId);
                         break;
                     }
                 }
             }
 
-            Console.WriteLine($"[CASBIN DEBUG] Final authorization result: {allowed}");
+            _logger.LogDebug("Final authorization result: {Allowed}", allowed);
 
             if (!allowed)
             {

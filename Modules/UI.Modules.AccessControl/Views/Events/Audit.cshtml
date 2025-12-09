@@ -46,7 +46,7 @@
         <tr>
             <th>Audit ID</th>
             <th>Timestamp</th>
-            <th>User ID</th>
+            <th>User</th>
             <th>Workstream</th>
             <th>Business Process</th>
             <th>Entity Type</th>
@@ -59,12 +59,14 @@
     <tbody>
 @if (Model.Any())
 {
+    var userDisplayNames = ViewBag.UserDisplayNames as Dictionary<string, string> ?? new Dictionary<string, string>();
     foreach (var item in Model)
     {
+        var userName = (!string.IsNullOrEmpty(item.UserId) && userDisplayNames.TryGetValue(item.UserId, out var displayName)) ? displayName : item.UserId;
         <tr>
             <td><code>@item.AuditId</code></td>
             <td>@item.UpdatedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
-            <td>@item.UserId</td>
+            <td title="@item.UserId">@userName</td>
             <td>@item.WorkstreamId</td>
             <td>
                 @if (!string.IsNullOrWhiteSpace(item.BusinessProcessId))
@@ -103,7 +105,13 @@
                             <dd class="col-sm-9">@item.Action</dd>
 
                             <dt class="col-sm-3">User:</dt>
-                            <dd class="col-sm-9">@item.UserId</dd>
+                            <dd class="col-sm-9">
+                                @userName
+                                @if (userName != item.UserId)
+                                {
+                                    <br /><small class="text-muted">User ID: <code>@item.UserId</code></small>
+                                }
+                            </dd>
 
                             <dt class="col-sm-3">Request Correlation:</dt>
                             <dd class="col-sm-9"><code>@item.RequestCorrelationId</code></dd>

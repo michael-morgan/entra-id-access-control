@@ -6,12 +6,34 @@ using Api.Modules.DemoApi.Services.Loans;
 using Api.Modules.AccessControl.Interfaces;
 using Api.Modules.AccessControl;
 using Api.Modules.AccessControl.Persistence;
+using FluentValidation;
+using FluentValidation.AspNetCore;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container
 builder.Services.AddControllers();
+
+// Add FluentValidation for input validation
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+
+// Add Problem Details for standardized API error responses (RFC 7807)
+builder.Services.AddProblemDetails(options =>
+{
+    options.CustomizeProblemDetails = context =>
+    {
+        // Don't expose exception details in production
+        if (!context.HttpContext.RequestServices.GetRequiredService<IHostEnvironment>().IsDevelopment())
+        {
+            context.ProblemDetails.Extensions.Remove("exception");
+            context.ProblemDetails.Extensions.Remove("exceptionType");
+            context.ProblemDetails.Extensions.Remove("exceptionMessage");
+        }
+    };
+});
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -42,22 +64,57 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
 // Register ABAC evaluators
 builder.Services.AddSingleton<IWorkstreamAbacEvaluator, LoansAbacEvaluator>();
 
-// Add CORS for local development
+// Add rate limiting to protect against abuse (100 requests/minute per IP)
+builder.Services.AddRateLimiter(options =>
+{
+    options.GlobalLimiter = System.Threading.RateLimiting.PartitionedRateLimiter.Create<HttpContext, string>(context =>
+    {
+        var ipAddress = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+            ipAddress,
+            _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 100,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = System.Threading.RateLimiting.QueueProcessingOrder.OldestFirst,
+                QueueLimit = 10
+            });
+    });
+
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+});
+
+// Add CORS with specific allowed origins (production-ready)
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddPolicy("AllowSpecificOrigins", policy =>
     {
-        policy.AllowAnyOrigin()
+        // Get allowed origins from configuration (comma-separated)
+        var allowedOrigins = builder.Configuration.GetValue<string>("Cors:AllowedOrigins")
+            ?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            ?? new[] { "https://localhost:7006", "http://localhost:5146" }; // Default for development
+
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyMethod()
-              .AllowAnyHeader();
+              .AllowAnyHeader()
+              .AllowCredentials(); // Allow cookies/auth headers
     });
 });
 
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
-if (app.Environment.IsDevelopment())
+// Configure error handling
+if (!app.Environment.IsDevelopment())
 {
+    // Production: Use problem details for API errors (RFC 7807)
+    app.UseExceptionHandler(options => { });
+    app.UseHsts();
+}
+else
+{
+    // Development: Show detailed errors and Swagger
+    app.UseDeveloperExceptionPage();
     app.UseSwagger();
     app.UseSwaggerUI(options =>
     {
@@ -67,7 +124,10 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseCors("AllowAll");
+// Apply rate limiting before other middleware
+app.UseRateLimiter();
+
+app.UseCors("AllowSpecificOrigins");
 
 // Use Access Control Framework middleware (correlation) - MUST be before auth
 app.UseAccessControlFramework();

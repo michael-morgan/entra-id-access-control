@@ -1,28 +1,30 @@
 using System.Security.Claims;
-using System.Text.Json;
 using Api.Modules.AccessControl.Interfaces;
 using Api.Modules.AccessControl.Models;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Options;
 
 namespace Api.Modules.AccessControl.Authorization;
 
 /// <summary>
 /// Builds ABAC context from current user, resource, and environment.
-/// Merges attributes from user, groups, and roles with precedence: User > Role > Group.
+/// Delegates specialized tasks to dedicated services following SRP.
 /// </summary>
 public class DefaultAbacContextProvider(
     IUserAttributeStore userAttributeStore,
     IGroupAttributeStore groupAttributeStore,
     IRoleAttributeStore roleAttributeStore,
     IHttpContextAccessor httpContextAccessor,
-    IOptions<AuthorizationOptions> options) : IAbacContextProvider
+    IAttributeMerger attributeMerger,
+    IResourceAttributeExtractor resourceAttributeExtractor,
+    IEnvironmentContextProvider environmentContextProvider) : IAbacContextProvider
 {
     private readonly IUserAttributeStore _userAttributeStore = userAttributeStore;
     private readonly IGroupAttributeStore _groupAttributeStore = groupAttributeStore;
     private readonly IRoleAttributeStore _roleAttributeStore = roleAttributeStore;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
-    private readonly IOptions<AuthorizationOptions> _options = options;
+    private readonly IAttributeMerger _attributeMerger = attributeMerger;
+    private readonly IResourceAttributeExtractor _resourceAttributeExtractor = resourceAttributeExtractor;
+    private readonly IEnvironmentContextProvider _environmentContextProvider = environmentContextProvider;
 
     public async Task<AbacContext> BuildContextAsync(
         ClaimsPrincipal user,
@@ -46,16 +48,16 @@ public class DefaultAbacContextProvider(
         var groupAttributes = await _groupAttributeStore.GetAttributesAsync(groupIds, workstreamId);
         var roleAttributes = await _roleAttributeStore.GetAttributesByRoleValuesAsync(roleValues, workstreamId);
 
-        // Merge attributes with precedence: User > Role > Group
-        var mergedAttributes = MergeAttributes(groupAttributes, roleAttributes, userAttributes);
+        // Merge attributes with precedence: User > Role > Group (delegated to AttributeMerger)
+        var mergedAttributes = _attributeMerger.MergeAttributes(groupAttributes, roleAttributes, userAttributes);
 
-        // Build environment context
+        // Build environment context (delegated to EnvironmentContextProvider)
         var httpContext = _httpContextAccessor.HttpContext;
         var now = DateTimeOffset.UtcNow;
         var clientIp = httpContext?.Connection.RemoteIpAddress?.ToString();
 
-        // Extract resource attributes dynamically
-        var resourceAttributes = ExtractResourceAttributes(resourceEntity);
+        // Extract resource attributes dynamically (delegated to ResourceAttributeExtractor)
+        var resourceAttributes = _resourceAttributeExtractor.ExtractAttributes(resourceEntity);
 
         var context = new AbacContext
         {
@@ -75,122 +77,11 @@ public class DefaultAbacContextProvider(
             // Environment attributes (computed at runtime)
             RequestTime = now,
             ClientIpAddress = clientIp,
-            IsBusinessHours = IsWithinBusinessHours(now),
-            IsInternalNetwork = IsInternalNetwork(clientIp)
+            IsBusinessHours = _environmentContextProvider.IsWithinBusinessHours(now),
+            IsInternalNetwork = _environmentContextProvider.IsInternalNetwork(clientIp)
         };
 
         return context;
-    }
-
-    /// <summary>
-    /// Merges attributes with precedence: User > Role > Group.
-    /// User attributes override role attributes, which override group attributes.
-    /// Returns a dictionary of all merged attributes.
-    /// </summary>
-    private static Dictionary<string, object> MergeAttributes(
-        IDictionary<string, GroupAttributes> groupAttributes,
-        IDictionary<string, RoleAttributes> roleAttributes,
-        UserAttributes? userAttributes)
-    {
-        var result = new Dictionary<string, object>();
-
-        // 1. Start with group attributes (lowest precedence)
-        foreach (var group in groupAttributes.Values)
-        {
-            foreach (var attr in group.Attributes)
-            {
-                if (!result.ContainsKey(attr.Key))
-                {
-                    result[attr.Key] = ConvertJsonElement(attr.Value);
-                }
-            }
-        }
-
-        // 2. Override with role attributes (medium precedence)
-        foreach (var role in roleAttributes.Values)
-        {
-            foreach (var attr in role.Attributes)
-            {
-                result[attr.Key] = ConvertJsonElement(attr.Value);
-            }
-        }
-
-        // 3. Override with user attributes (highest precedence)
-        if (userAttributes != null)
-        {
-            foreach (var attr in userAttributes.Attributes)
-            {
-                result[attr.Key] = ConvertJsonElement(attr.Value);
-            }
-        }
-
-        return result;
-    }
-
-    /// <summary>
-    /// Converts JsonElement to appropriate .NET type.
-    /// </summary>
-    private static object ConvertJsonElement(JsonElement element)
-    {
-        return element.ValueKind switch
-        {
-            JsonValueKind.String => element.GetString() ?? string.Empty,
-            JsonValueKind.Number => element.TryGetInt32(out var i) ? i : (element.TryGetInt64(out var l) ? l : element.GetDecimal()),
-            JsonValueKind.True => true,
-            JsonValueKind.False => false,
-            JsonValueKind.Array => element.EnumerateArray().Select(e => ConvertJsonElement(e)).ToArray(),
-            JsonValueKind.Object => element.EnumerateObject().ToDictionary(p => p.Name, p => ConvertJsonElement(p.Value)),
-            _ => element.ToString()
-        };
-    }
-
-    /// <summary>
-    /// Extracts all properties from resource entity as a dictionary.
-    /// </summary>
-    private static Dictionary<string, object> ExtractResourceAttributes(object? resource)
-    {
-        var result = new Dictionary<string, object>();
-
-        if (resource == null)
-            return result;
-
-        var properties = resource.GetType().GetProperties();
-        foreach (var property in properties)
-        {
-            var value = property.GetValue(resource);
-            if (value != null)
-            {
-                result[property.Name] = value;
-            }
-        }
-
-        return result;
-    }
-
-    private bool IsWithinBusinessHours(DateTimeOffset time)
-    {
-        var options = _options.Value;
-        var localTime = time.ToLocalTime();
-        var hour = localTime.Hour;
-
-        return hour >= options.BusinessHoursStart && hour < options.BusinessHoursEnd;
-    }
-
-    private bool IsInternalNetwork(string? ipAddress)
-    {
-        if (string.IsNullOrWhiteSpace(ipAddress))
-            return false;
-
-        var options = _options.Value;
-
-        // Check against configured internal network ranges
-        foreach (var range in options.InternalNetworkRanges)
-        {
-            if (ipAddress.StartsWith(range))
-                return true;
-        }
-
-        return false;
     }
 }
 
