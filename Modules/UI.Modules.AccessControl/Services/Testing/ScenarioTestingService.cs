@@ -14,10 +14,14 @@ namespace UI.Modules.AccessControl.Services.Testing;
 public class ScenarioTestingService(
     IPolicyRepository policyRepository,
     IAuthorizationTestingService authorizationTestingService,
+    IAbacRuleRepository abacRuleRepository,
+    IUserAttributeRepository userAttributeRepository,
     ILogger<ScenarioTestingService> logger) : IScenarioTestingService
 {
     private readonly IPolicyRepository _policyRepository = policyRepository;
     private readonly IAuthorizationTestingService _authorizationTestingService = authorizationTestingService;
+    private readonly IAbacRuleRepository _abacRuleRepository = abacRuleRepository;
+    private readonly IUserAttributeRepository _userAttributeRepository = userAttributeRepository;
     private readonly ILogger<ScenarioTestingService> _logger = logger;
 
     public async Task<List<DynamicScenario>> GetAvailableScenariosAsync(string token, string workstreamId)
@@ -88,6 +92,23 @@ public class ScenarioTestingService(
 
         var scenarios = new List<DynamicScenario>();
 
+        // Get ABAC rules and user attributes for enhanced scenario generation
+        Api.Modules.AccessControl.Persistence.Entities.Authorization.UserAttribute? userAttributes = null;
+        IEnumerable<Api.Modules.AccessControl.Persistence.Entities.Authorization.AbacRule> abacRules = Enumerable.Empty<Api.Modules.AccessControl.Persistence.Entities.Authorization.AbacRule>();
+
+        if (!string.IsNullOrEmpty(userId))
+        {
+            userAttributes = await _userAttributeRepository.GetByUserIdAndWorkstreamAsync(userId, workstreamId);
+            abacRules = await _abacRuleRepository.SearchAsync(workstreamId);
+            _logger.LogInformation("Found {Count} ABAC rules for workstream {Workstream}", abacRules.Count(), workstreamId);
+        }
+        else
+        {
+            _logger.LogWarning("Cannot generate ABAC scenarios without userId - will only generate RBAC scenarios");
+        }
+
+        var hasAbacRules = abacRules.Any();
+
         // Group by resource to create scenarios
         var resourceGroups = resourceActions.GroupBy(ra => ra.Resource);
 
@@ -96,20 +117,27 @@ public class ScenarioTestingService(
             var resource = resourceGroup.Key;
             var actions = resourceGroup.Select(ra => ra.Action).ToList();
 
-            // Create a scenario for this resource showing what actions are allowed
+            // Create a basic scenario for this resource showing what actions are allowed (without ABAC)
             // Use Base64 encoding for the resource to preserve exact casing and special characters
             var resourceId = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(resource));
             var scenario = new DynamicScenario
             {
                 Id = $"{workstreamId}-{resourceId}",
-                Name = $"{resource} - Authorized Actions",
-                Description = $"Test all authorized actions for {resource} in {workstreamId} workstream",
+                Name = $"{resource} - Authorized Actions (RBAC Only)",
+                Description = $"Test basic role-based permissions for {resource} in {workstreamId} workstream (no entity data)",
                 Resource = resource,
                 AvailableActions = actions,
                 WorkstreamId = workstreamId
             };
 
             scenarios.Add(scenario);
+
+            // Generate ABAC-aware scenarios if there are ABAC rules and user attributes
+            if (hasAbacRules && userAttributes != null && actions.Any())
+            {
+                var abacScenarios = await GenerateAbacScenarios(resource, actions, userAttributes, workstreamId, abacRules);
+                scenarios.AddRange(abacScenarios);
+            }
         }
 
         return scenarios;
@@ -209,86 +237,480 @@ public class ScenarioTestingService(
 
     private async Task<ScenarioDefinition?> GetScenarioDefinitionAsync(string scenarioName, string token, string workstreamId)
     {
-        // Decode token to get user info
-        var handler = new JwtSecurityTokenHandler();
-        var jwtToken = handler.ReadJwtToken(token);
-        var userId = jwtToken.Claims.FirstOrDefault(c => c.Type == "oid")?.Value;
-        var groups = jwtToken.Claims.Where(c => c.Type == "groups").Select(c => c.Value).ToList();
-        var roles = jwtToken.Claims.Where(c => c.Type == "roles" || c.Type == "role").Select(c => c.Value).ToList();
+        // First, check if this is a predefined ABAC scenario by getting all available scenarios
+        var allScenarios = await GetAvailableScenariosAsync(token, workstreamId);
+        var matchingScenario = allScenarios.FirstOrDefault(s => s.Id == scenarioName);
 
-        // Build initial subjects for Casbin
-        var subjects = new List<string>();
-        if (!string.IsNullOrWhiteSpace(userId)) subjects.Add(userId);
-        subjects.AddRange(roles.Where(r => !string.IsNullOrWhiteSpace(r)));
-        subjects.AddRange(groups.Where(g => !string.IsNullOrWhiteSpace(g)));
-
-        // Resolve group-to-role mappings (type "g" policies)
-        var roleMappings = (await _policyRepository.GetBySubjectIdsAsync(subjects, policyType: "g"))
-            .Where(p => p.WorkstreamId == workstreamId || p.WorkstreamId == "*")
-            .ToList();
-
-        var resolvedRoles = roleMappings
-            .Where(g => !string.IsNullOrWhiteSpace(g.V1))
-            .Select(g => g.V1!)
-            .Distinct()
-            .ToList();
-
-        // Add resolved roles to subjects
-        subjects.AddRange(resolvedRoles);
-
-        // Get all permission policies for this workstream and resolved subjects
-        var policies = (await _policyRepository.GetBySubjectIdsAsync(subjects, policyType: "p"))
-            .Where(p => p.WorkstreamId == workstreamId || p.WorkstreamId == "*")
-            .ToList();
-
-        // Extract the resource from scenario name (format: "{workstream}-{base64Resource}")
-        var parts = scenarioName.Split('-', 2);
-        if (parts.Length < 2) return null;
-
-        // Decode the Base64 encoded resource name
-        string resource;
-        try
+        if (matchingScenario != null)
         {
-            var resourceBytes = Convert.FromBase64String(parts[1]);
-            resource = System.Text.Encoding.UTF8.GetString(resourceBytes);
-        }
-        catch (FormatException)
-        {
-            // Fallback for old format (if any scenarios were created before the Base64 change)
-            _logger.LogWarning("Failed to decode Base64 resource from scenario name '{ScenarioName}', trying legacy format", scenarioName);
-            resource = parts[1].Replace("-", "/").Replace("id", ":id");
+            // This is a predefined scenario (either RBAC-only or ABAC-aware)
+            var scenario = new ScenarioDefinition
+            {
+                Name = matchingScenario.Name,
+                Description = matchingScenario.Description,
+                Steps = []
+            };
+
+            // Determine expected result based on scenario description
+            string expectedResult = "Allow";
+            if (matchingScenario.Description.Contains("should FAIL", StringComparison.OrdinalIgnoreCase) ||
+                matchingScenario.Description.Contains("should fail", StringComparison.OrdinalIgnoreCase) ||
+                matchingScenario.Description.Contains("should deny", StringComparison.OrdinalIgnoreCase))
+            {
+                expectedResult = "Deny";
+            }
+
+            // Create steps for each available action in the scenario
+            foreach (var action in matchingScenario.AvailableActions)
+            {
+                scenario.Steps.Add(new ScenarioStep
+                {
+                    Description = $"{action} on {matchingScenario.Resource}" +
+                        (matchingScenario.MockEntityJson != null ? " (with ABAC evaluation)" : ""),
+                    Resource = matchingScenario.Resource,
+                    Action = action,
+                    MockEntityJson = matchingScenario.MockEntityJson,
+                    ExpectedResult = expectedResult
+                });
+            }
+
+            return scenario;
         }
 
-        // Get all actions user can perform on this resource
-        // V0=Subject, V1=Workstream, V2=Resource, V3=Action, V4=Effect
-        var allowedActions = policies
-            .Where(p => (p.V2 == resource || p.V2 == "*") && !string.IsNullOrWhiteSpace(p.V3))
+        // Fallback: scenario not found in available scenarios
+        return null;
+    }
+
+    /// <summary>
+    /// Generates ABAC-aware test scenarios dynamically based on actual ABAC rules configuration.
+    /// Parses rule configurations to understand what attributes and comparisons are being tested.
+    /// </summary>
+    private async Task<List<DynamicScenario>> GenerateAbacScenarios(
+        string resource,
+        List<string> actions,
+        Api.Modules.AccessControl.Persistence.Entities.Authorization.UserAttribute userAttrs,
+        string workstreamId,
+        IEnumerable<Api.Modules.AccessControl.Persistence.Entities.Authorization.AbacRule> abacRules)
+    {
+        var scenarios = new List<DynamicScenario>();
+
+        // Parse user attributes from JSON
+        var userAttributesDict = !string.IsNullOrEmpty(userAttrs.AttributesJson)
+            ? System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, System.Text.Json.JsonElement>>(userAttrs.AttributesJson)
+            : null;
+
+        if (userAttributesDict == null || !abacRules.Any())
+        {
+            return scenarios; // No attributes or rules to test
+        }
+
+        // Only generate ABAC scenarios for instance-level operations (resources with wildcards)
+        if (!resource.Contains("/*") && !resource.Contains("/:"))
+        {
+            return scenarios;
+        }
+
+        // Parse ABAC rules to understand what they're testing
+        var ruleAnalysis = AnalyzeAbacRules(abacRules, userAttributesDict);
+
+        // Get all actions from policies to determine which ones might trigger ABAC evaluation
+        // Query Casbin policies with PolicyType='p' and extract actions from V3 column
+        var allPolicies = await _policyRepository.SearchAsync(workstreamId, policyType: "p");
+        var actionsWithAbacRules = allPolicies
+            .Where(p => !string.IsNullOrEmpty(p.V3) && abacRules.Any())
             .Select(p => p.V3!)
             .Distinct()
-            .ToList();
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        if (allowedActions.Count == 0) return null;
+        // Filter to only actions that exist in both the available actions list and have policies defined
+        var abacAwareActions = actions.Where(a => actionsWithAbacRules.Contains(a)).ToList();
 
-        // Create scenario with steps for each allowed action
-        var scenario = new ScenarioDefinition
+        foreach (var action in abacAwareActions)
         {
-            Name = $"{resource} - Authorized Actions",
-            Description = $"Test all authorized actions for {resource}",
-            Steps = []
-        };
+            // Generate test scenarios based on what the rules are actually testing
+            scenarios.AddRange(await GenerateScenariosForRuleAnalysis(resource, action, workstreamId, ruleAnalysis));
+        }
 
-        foreach (var action in allowedActions)
+        return scenarios;
+    }
+
+    /// <summary>
+    /// Analyzes ABAC rules to understand what attributes they test and how.
+    /// Returns structured information about comparisons, matches, and ranges.
+    /// </summary>
+    private AbacRuleAnalysis AnalyzeAbacRules(
+        IEnumerable<Api.Modules.AccessControl.Persistence.Entities.Authorization.AbacRule> abacRules,
+        Dictionary<string, System.Text.Json.JsonElement> userAttributes)
+    {
+        var analysis = new AbacRuleAnalysis();
+
+        foreach (var rule in abacRules.Where(r => r.IsActive))
         {
-            scenario.Steps.Add(new ScenarioStep
+            try
             {
-                Description = $"{action} on {resource}",
+                var config = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, System.Text.Json.JsonElement>>(rule.Configuration);
+                if (config == null) continue;
+
+                var ruleType = config.ContainsKey("ruleType") ? config["ruleType"].GetString() : rule.RuleType;
+
+                switch (ruleType)
+                {
+                    case "AttributeComparison":
+                        // Example: {"userAttribute": "ApprovalLimit", "operator": ">=", "resourceProperty": "Amount"}
+                        if (config.ContainsKey("userAttribute") && config.ContainsKey("resourceProperty"))
+                        {
+                            var userAttr = config["userAttribute"].GetString();
+                            var resourceProp = config["resourceProperty"].GetString();
+                            var op = config.ContainsKey("operator") ? config["operator"].GetString() : ">=";
+
+                            if (!string.IsNullOrEmpty(userAttr) && !string.IsNullOrEmpty(resourceProp) && userAttributes.ContainsKey(userAttr))
+                            {
+                                analysis.AttributeComparisons.Add(new AttributeComparison
+                                {
+                                    UserAttribute = userAttr,
+                                    ResourceProperty = resourceProp,
+                                    Operator = op ?? ">=",
+                                    UserValue = userAttributes[userAttr]
+                                });
+                            }
+                        }
+                        break;
+
+                    case "PropertyMatch":
+                        // Example: {"userAttribute": "Region", "resourceProperty": "Region"}
+                        if (config.ContainsKey("userAttribute") && config.ContainsKey("resourceProperty"))
+                        {
+                            var userAttr = config["userAttribute"].GetString();
+                            var resourceProp = config["resourceProperty"].GetString();
+
+                            if (!string.IsNullOrEmpty(userAttr) && !string.IsNullOrEmpty(resourceProp) && userAttributes.ContainsKey(userAttr))
+                            {
+                                analysis.PropertyMatches.Add(new PropertyMatch
+                                {
+                                    UserAttribute = userAttr,
+                                    ResourceProperty = resourceProp,
+                                    UserValue = userAttributes[userAttr]
+                                });
+                            }
+                        }
+                        break;
+
+                    case "ValueRange":
+                        // Example: {"attributeName": "Amount", "min": 1000, "max": 50000}
+                        if (config.ContainsKey("attributeName"))
+                        {
+                            var attrName = config["attributeName"].GetString();
+                            if (!string.IsNullOrEmpty(attrName))
+                            {
+                                decimal? min = config.ContainsKey("min") ? config["min"].GetDecimal() : null;
+                                decimal? max = config.ContainsKey("max") ? config["max"].GetDecimal() : null;
+
+                                analysis.ValueRanges.Add(new ValueRange
+                                {
+                                    AttributeName = attrName,
+                                    Min = min,
+                                    Max = max
+                                });
+                            }
+                        }
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to parse ABAC rule configuration for rule {RuleId}", rule.Id);
+            }
+        }
+
+        return analysis;
+    }
+
+    /// <summary>
+    /// Generates test scenarios based on analyzed ABAC rules.
+    /// Creates both passing and failing scenarios to test rule boundaries.
+    /// </summary>
+    private async Task<List<DynamicScenario>> GenerateScenariosForRuleAnalysis(
+        string resource,
+        string action,
+        string workstreamId,
+        AbacRuleAnalysis analysis)
+    {
+        var scenarios = new List<DynamicScenario>();
+        var mockEntity = new Dictionary<string, object>();
+
+        // Scenario 1: Generate a PASSING scenario with all rules satisfied
+        bool canGeneratePassingScenario = true;
+
+        // Add values that satisfy AttributeComparisons (numeric comparisons)
+        foreach (var comparison in analysis.AttributeComparisons)
+        {
+            try
+            {
+                var userValue = comparison.UserValue.ValueKind == System.Text.Json.JsonValueKind.Number
+                    ? comparison.UserValue.GetDecimal()
+                    : (decimal?)null;
+
+                if (!userValue.HasValue)
+                {
+                    canGeneratePassingScenario = false;
+                    continue;
+                }
+
+                // For ">=" operator, use 75% of user's limit (well within bounds)
+                // For other operators, adjust accordingly
+                decimal resourceValue = comparison.Operator switch
+                {
+                    ">=" or ">" => Math.Floor(userValue.Value * 0.75m),
+                    "<=" or "<" => Math.Ceiling(userValue.Value * 1.25m),
+                    "==" => userValue.Value,
+                    _ => Math.Floor(userValue.Value * 0.75m)
+                };
+
+                mockEntity[comparison.ResourceProperty] = resourceValue;
+            }
+            catch
+            {
+                canGeneratePassingScenario = false;
+            }
+        }
+
+        // Add values that satisfy PropertyMatches (exact matches)
+        foreach (var match in analysis.PropertyMatches)
+        {
+            try
+            {
+                var userValue = match.UserValue.ValueKind == System.Text.Json.JsonValueKind.String
+                    ? match.UserValue.GetString()
+                    : match.UserValue.ToString();
+
+                if (!string.IsNullOrEmpty(userValue))
+                {
+                    mockEntity[match.ResourceProperty] = userValue;
+                }
+                else
+                {
+                    canGeneratePassingScenario = false;
+                }
+            }
+            catch
+            {
+                canGeneratePassingScenario = false;
+            }
+        }
+
+        // Add values within ValueRanges
+        foreach (var range in analysis.ValueRanges)
+        {
+            if (range.Min.HasValue && range.Max.HasValue)
+            {
+                // Use midpoint of range
+                mockEntity[range.AttributeName] = (range.Min.Value + range.Max.Value) / 2;
+            }
+            else if (range.Min.HasValue)
+            {
+                mockEntity[range.AttributeName] = range.Min.Value * 1.5m;
+            }
+            else if (range.Max.HasValue)
+            {
+                mockEntity[range.AttributeName] = range.Max.Value * 0.5m;
+            }
+        }
+
+        // Generate passing scenario if we have enough data
+        if (canGeneratePassingScenario && mockEntity.Any())
+        {
+            var scenarioId = $"{workstreamId}-{Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes($"{resource}-{action}-abac-pass"))}";
+            scenarios.Add(new DynamicScenario
+            {
+                Id = scenarioId,
+                Name = $"{resource} - {action} (ABAC Pass)",
+                Description = $"Test {action} with attributes that satisfy all ABAC rules - should PASS",
                 Resource = resource,
-                Action = action,
-                ExpectedResult = "Allow" // User has permission, so we expect Allow
+                AvailableActions = [action],
+                WorkstreamId = workstreamId,
+                MockEntityJson = System.Text.Json.JsonSerializer.Serialize(mockEntity)
             });
         }
 
-        return scenario;
+        // Scenario 2: Generate FAILING scenarios for each rule type
+        // Test AttributeComparison failures (deduplicated by UserAttribute)
+        var processedAttributeComparisons = new HashSet<string>();
+        foreach (var comparison in analysis.AttributeComparisons)
+        {
+            try
+            {
+                // Skip if we've already created a scenario for this attribute
+                if (processedAttributeComparisons.Contains(comparison.UserAttribute))
+                    continue;
+
+                var userValue = comparison.UserValue.ValueKind == System.Text.Json.JsonValueKind.Number
+                    ? comparison.UserValue.GetDecimal()
+                    : (decimal?)null;
+
+                if (!userValue.HasValue) continue;
+
+                var failingMockEntity = new Dictionary<string, object>(mockEntity);
+
+                // Create a value that will FAIL the comparison
+                decimal failingValue = comparison.Operator switch
+                {
+                    ">=" or ">" => Math.Ceiling(userValue.Value * 1.5m), // Exceeds limit
+                    "<=" or "<" => Math.Floor(userValue.Value * 0.5m),   // Below limit
+                    "==" => userValue.Value + 1,                          // Not equal
+                    _ => Math.Ceiling(userValue.Value * 1.5m)
+                };
+
+                failingMockEntity[comparison.ResourceProperty] = failingValue;
+
+                var scenarioId = $"{workstreamId}-{Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes($"{resource}-{action}-fail-{comparison.UserAttribute}"))}";
+                var displayValue = comparison.UserValue.ValueKind == System.Text.Json.JsonValueKind.Number
+                    ? $"${userValue:N0}"
+                    : comparison.UserValue.ToString();
+
+                scenarios.Add(new DynamicScenario
+                {
+                    Id = scenarioId,
+                    Name = $"{resource} - {action} (Fails {comparison.UserAttribute} Check)",
+                    Description = $"Test {action} with {comparison.ResourceProperty}=${failingValue:N0} - should FAIL ABAC (user {comparison.UserAttribute} is {displayValue})",
+                    Resource = resource,
+                    AvailableActions = [action],
+                    WorkstreamId = workstreamId,
+                    MockEntityJson = System.Text.Json.JsonSerializer.Serialize(failingMockEntity)
+                });
+
+                processedAttributeComparisons.Add(comparison.UserAttribute);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to generate failing scenario for AttributeComparison {UserAttribute}", comparison.UserAttribute);
+            }
+        }
+
+        // Test PropertyMatch failures (deduplicated by UserAttribute)
+        var processedPropertyMatches = new HashSet<string>();
+        foreach (var match in analysis.PropertyMatches)
+        {
+            try
+            {
+                // Skip if we've already created a scenario for this attribute
+                if (processedPropertyMatches.Contains(match.UserAttribute))
+                    continue;
+
+                var userValue = match.UserValue.ValueKind == System.Text.Json.JsonValueKind.String
+                    ? match.UserValue.GetString()
+                    : match.UserValue.ToString();
+
+                if (string.IsNullOrEmpty(userValue)) continue;
+
+                var failingMockEntity = new Dictionary<string, object>(mockEntity);
+
+                // Get a mismatched value dynamically from other users' attribute values in the database
+                string mismatchedValue = await GetAlternativeAttributeValueAsync(match.UserAttribute, userValue, workstreamId);
+
+                failingMockEntity[match.ResourceProperty] = mismatchedValue;
+
+                var scenarioId = $"{workstreamId}-{Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes($"{resource}-{action}-mismatch-{match.UserAttribute}"))}";
+
+                scenarios.Add(new DynamicScenario
+                {
+                    Id = scenarioId,
+                    Name = $"{resource} - {action} (Mismatched {match.UserAttribute})",
+                    Description = $"Test {action} with {match.ResourceProperty}={mismatchedValue} - should FAIL ABAC (user {match.UserAttribute} is {userValue})",
+                    Resource = resource,
+                    AvailableActions = [action],
+                    WorkstreamId = workstreamId,
+                    MockEntityJson = System.Text.Json.JsonSerializer.Serialize(failingMockEntity)
+                });
+
+                processedPropertyMatches.Add(match.UserAttribute);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to generate failing scenario for PropertyMatch {UserAttribute}", match.UserAttribute);
+            }
+        }
+
+        return scenarios;
+    }
+
+    /// <summary>
+    /// Gets an alternative attribute value from the database for testing mismatches.
+    /// Queries other users' attributes to find a different value for the same attribute.
+    /// </summary>
+    private async Task<string> GetAlternativeAttributeValueAsync(string attributeName, string currentValue, string workstreamId)
+    {
+        try
+        {
+            // Query all user attributes for this workstream
+            var allUserAttributes = await _userAttributeRepository.SearchAsync(workstreamId);
+
+            // Parse all attributes and find different values for the specified attribute
+            var alternativeValues = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var userAttr in allUserAttributes)
+            {
+                if (string.IsNullOrEmpty(userAttr.AttributesJson)) continue;
+
+                try
+                {
+                    var attrDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, System.Text.Json.JsonElement>>(userAttr.AttributesJson);
+                    if (attrDict != null && attrDict.ContainsKey(attributeName))
+                    {
+                        var value = attrDict[attributeName].ValueKind == System.Text.Json.JsonValueKind.String
+                            ? attrDict[attributeName].GetString()
+                            : attrDict[attributeName].ToString();
+
+                        if (!string.IsNullOrEmpty(value) && !value.Equals(currentValue, StringComparison.OrdinalIgnoreCase))
+                        {
+                            alternativeValues.Add(value);
+                        }
+                    }
+                }
+                catch
+                {
+                    // Skip invalid JSON
+                    continue;
+                }
+            }
+
+            // Return first alternative value found, or generate a generic one
+            return alternativeValues.FirstOrDefault() ?? $"Alternative-{attributeName}-Value";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to get alternative attribute value for {AttributeName}", attributeName);
+            return $"Alternative-{attributeName}-Value";
+        }
+    }
+
+    // Helper classes for rule analysis
+    private class AbacRuleAnalysis
+    {
+        public List<AttributeComparison> AttributeComparisons { get; set; } = new();
+        public List<PropertyMatch> PropertyMatches { get; set; } = new();
+        public List<ValueRange> ValueRanges { get; set; } = new();
+    }
+
+    private class AttributeComparison
+    {
+        public required string UserAttribute { get; set; }
+        public required string ResourceProperty { get; set; }
+        public required string Operator { get; set; }
+        public required System.Text.Json.JsonElement UserValue { get; set; }
+    }
+
+    private class PropertyMatch
+    {
+        public required string UserAttribute { get; set; }
+        public required string ResourceProperty { get; set; }
+        public required System.Text.Json.JsonElement UserValue { get; set; }
+    }
+
+    private class ValueRange
+    {
+        public required string AttributeName { get; set; }
+        public decimal? Min { get; set; }
+        public decimal? Max { get; set; }
     }
 
     private class ScenarioDefinition

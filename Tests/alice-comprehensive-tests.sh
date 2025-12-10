@@ -149,7 +149,7 @@ RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_URL/api/loans" \
   -H "Content-Type: application/json" \
   -d '{
     "applicantId": "ABAC-001",
-    "applicantName": "ABAC Test 150K",
+    "applicantName": "Alpha Borrower",
     "requestedAmount": 150000,
     "termMonths": 360,
     "region": "US-WEST"
@@ -197,7 +197,7 @@ RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_URL/api/loans" \
   -H "Content-Type: application/json" \
   -d '{
     "applicantId": "ABAC-002",
-    "applicantName": "ABAC Test 200K",
+    "applicantName": "Beta Borrower",
     "requestedAmount": 200000,
     "termMonths": 360,
     "region": "US-WEST"
@@ -245,7 +245,7 @@ RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_URL/api/loans" \
   -H "Content-Type: application/json" \
   -d '{
     "applicantId": "ABAC-003",
-    "applicantName": "ABAC Test 250K",
+    "applicantName": "Gamma Borrower",
     "requestedAmount": 250000,
     "termMonths": 360,
     "region": "US-WEST"

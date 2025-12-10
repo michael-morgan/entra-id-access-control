@@ -8,6 +8,15 @@ document.addEventListener("DOMContentLoaded", function () {
   const resultsDiv = document.getElementById("results");
   const errorAlert = document.getElementById("errorAlert");
 
+  // Pre-select the current workstream from the nav
+  const currentWorkstreamElement = document.getElementById("currentWorkstream");
+  if (currentWorkstreamElement && workstreamSelect) {
+    const currentWorkstream = currentWorkstreamElement.textContent.trim().toLowerCase();
+    if (currentWorkstream) {
+      workstreamSelect.value = currentWorkstream;
+    }
+  }
+
   analyzeButton.addEventListener("click", async function () {
     const token = tokenInput.value.trim();
     const workstreamId = workstreamSelect.value;
@@ -370,19 +379,8 @@ document.addEventListener("DOMContentLoaded", function () {
     if (scenariosSection) scenariosSection.style.display = "block";
     if (customTestSection) customTestSection.style.display = "block";
 
-    // Find the scenarios container by looking for the specific card structure
-    const allCards = document.querySelectorAll(".card");
-    let scenariosCard = null;
-
-    for (const card of allCards) {
-      const header = card.querySelector(
-        ".card-header.bg-primary.text-white h5"
-      );
-      if (header && header.textContent.includes("Interactive Test Scenarios")) {
-        scenariosCard = card;
-        break;
-      }
-    }
+    // Find the scenarios card by ID
+    const scenariosCard = document.getElementById("scenariosCard");
 
     if (!scenariosCard) {
       console.error("Scenarios card not found");
@@ -408,6 +406,34 @@ document.addEventListener("DOMContentLoaded", function () {
     scenarios.forEach((scenario) => {
       const scenarioCard = document.createElement("div");
       scenarioCard.className = "col-md-6 mb-3";
+
+      // Build mock entity payload display (if present)
+      let mockEntityHtml = "";
+      if (scenario.mockEntityJson) {
+        try {
+          const mockEntity = JSON.parse(scenario.mockEntityJson);
+          const formattedJson = JSON.stringify(mockEntity, null, 2);
+          const collapseId = `mockEntity-${escapeHtml(scenario.id).replace(/[^a-zA-Z0-9]/g, "_")}`;
+          mockEntityHtml = `
+            <div class="mt-2">
+              <a class="btn btn-sm btn-link text-decoration-none p-0 collapse-toggle" data-bs-toggle="collapse" href="#${collapseId}" role="button" aria-expanded="false" aria-controls="${collapseId}">
+                <small><span class="collapse-arrow">▶</span> View Mock Entity Payload</small>
+              </a>
+              <div class="collapse mt-2" id="${collapseId}">
+                <pre class="bg-light p-2 rounded small"><code>${escapeHtml(formattedJson)}</code></pre>
+              </div>
+            </div>
+          `;
+        } catch (e) {
+          // If JSON parsing fails, just show raw
+          mockEntityHtml = `
+            <div class="mt-2">
+              <small class="text-muted">Mock entity: <code>${escapeHtml(scenario.mockEntityJson)}</code></small>
+            </div>
+          `;
+        }
+      }
+
       scenarioCard.innerHTML = `
                 <div class="border p-3 rounded">
                     <h6>${escapeHtml(scenario.name)}</h6>
@@ -417,7 +443,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     <p class="small"><strong>Available Actions:</strong> ${scenario.availableActions
                       .map((a) => `<code>${escapeHtml(a)}</code>`)
                       .join(", ")}</p>
-                    <button class="btn btn-sm btn-outline-primary scenario-button" data-scenario="${escapeHtml(
+                    ${mockEntityHtml}
+                    <button class="btn btn-sm btn-outline-primary scenario-button mt-2" data-scenario="${escapeHtml(
                       scenario.id
                     )}">
                         Test ${escapeHtml(scenario.resource)}
@@ -429,6 +456,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Re-initialize scenario buttons
     initializeScenarioButtons();
+
+    // Initialize collapse toggle arrows
+    initializeCollapseArrows();
   }
 
   // Section 5: Interactive Test Scenarios
@@ -715,7 +745,29 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  // Initialize collapse arrow rotation
+  function initializeCollapseArrows() {
+    const collapseToggles = document.querySelectorAll(".collapse-toggle");
+
+    collapseToggles.forEach((toggle) => {
+      const targetId = toggle.getAttribute("href").substring(1);
+      const targetElement = document.getElementById(targetId);
+      const arrow = toggle.querySelector(".collapse-arrow");
+
+      if (targetElement && arrow) {
+        targetElement.addEventListener("show.bs.collapse", function () {
+          arrow.textContent = "▼";
+        });
+
+        targetElement.addEventListener("hide.bs.collapse", function () {
+          arrow.textContent = "▶";
+        });
+      }
+    });
+  }
+
   // Initialize all interactive features when DOM is ready
   initializeScenarioButtons();
   initializeCustomTestBuilder();
+  initializeCollapseArrows();
 });

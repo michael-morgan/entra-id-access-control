@@ -184,7 +184,8 @@
                 option.addEventListener('click', function(e) {
                     e.preventDefault();
                     const workstreamId = this.getAttribute('data-workstream');
-                    const currentUrl = window.location.href;
+                    // Get relative URL (pathname + search + hash) instead of full URL
+                    const currentUrl = window.location.pathname + window.location.search + window.location.hash;
 
                     // Create form and submit to SetWorkstream endpoint
                     const form = document.createElement('form');

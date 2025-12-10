@@ -1,6 +1,8 @@
 using System.Text.Json;
 using Api.Modules.AccessControl.Interfaces;
 using Api.Modules.AccessControl.Models;
+using Api.Modules.AccessControl.Persistence;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Api.Modules.AccessControl.Authorization;
@@ -11,9 +13,11 @@ namespace Api.Modules.AccessControl.Authorization;
 /// </summary>
 public class AbacEvaluationService(
     IWorkstreamAbacEvaluatorRegistry? evaluatorRegistry,
+    IServiceProvider serviceProvider,
     ILogger<AbacEvaluationService> logger) : IAbacEvaluationService
 {
     private readonly IWorkstreamAbacEvaluatorRegistry? _evaluatorRegistry = evaluatorRegistry;
+    private readonly IServiceProvider _serviceProvider = serviceProvider;
     private readonly ILogger<AbacEvaluationService> _logger = logger;
 
     /// <inheritdoc/>
@@ -84,7 +88,7 @@ public class AbacEvaluationService(
                 return true;
             }
 
-            // Check code-based evaluators (IWorkstreamAbacEvaluator)
+            // Phase 1: Check custom workstream-specific evaluators (e.g., LoansAbacEvaluator)
             if (_evaluatorRegistry != null)
             {
                 // Synchronously wait for async evaluation (Casbin custom functions must be synchronous)
@@ -95,18 +99,18 @@ public class AbacEvaluationService(
 
                 if (result != null)
                 {
-                    _logger.LogDebug("Code-based evaluator result - Allowed: {Allowed}, Reason: {Reason}",
+                    _logger.LogDebug("Custom evaluator result - Allowed: {Allowed}, Reason: {Reason}",
                         result.Allowed, result.Reason);
 
                     if (!result.Allowed)
                     {
-                        _logger.LogInformation("Access denied by ABAC evaluator: {Reason}", result.Reason);
-                        return false; // Explicit deny from code-based evaluator
+                        _logger.LogInformation("Access denied by custom ABAC evaluator: {Reason}", result.Reason);
+                        return false; // Explicit deny from custom evaluator
                     }
                 }
                 else
                 {
-                    _logger.LogDebug("No code-based evaluator handled this request");
+                    _logger.LogDebug("No custom evaluator handled this request");
                 }
             }
             else
@@ -114,15 +118,50 @@ public class AbacEvaluationService(
                 _logger.LogDebug("No evaluator registry found");
             }
 
-            // TODO: Check declarative ABAC rules from database (AbacRules table)
-            // This will query the database for rules matching:
-            // - WorkstreamId = workstream
-            // - ResourcePattern matches resource
-            // - Action matches action
-            // - IsActive = true
-            // Then evaluate each rule's RuleExpression against the context
+            // Phase 2: Check declarative ABAC rules from database (GenericAbacEvaluator)
+            // Create a scope to resolve scoped dependencies (AccessControlDbContext)
+            using (var scope = _serviceProvider.CreateScope())
+            {
+                try
+                {
+                    var dbContext = scope.ServiceProvider.GetRequiredService<AccessControlDbContext>();
+                    var loggerFactory = scope.ServiceProvider.GetRequiredService<ILoggerFactory>();
 
-            _logger.LogDebug("All ABAC rules passed, allowing request");
+                    var genericEvaluator = new GenericAbacEvaluator(
+                        workstream,
+                        dbContext,
+                        loggerFactory.CreateLogger<GenericAbacEvaluator>());
+
+                    // Synchronously evaluate generic rules
+                    var genericResult = genericEvaluator.EvaluateAsync(context, resource, action)
+                        .GetAwaiter()
+                        .GetResult();
+
+                    if (genericResult != null)
+                    {
+                        _logger.LogDebug("Generic evaluator result - Allowed: {Allowed}, Reason: {Reason}",
+                            genericResult.Allowed, genericResult.Reason);
+
+                        if (!genericResult.Allowed)
+                        {
+                            _logger.LogInformation("Access denied by generic ABAC rules: {Reason}", genericResult.Reason);
+                            return false; // Explicit deny from generic rules
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogDebug("No generic ABAC rules applied");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error evaluating generic ABAC rules");
+                    // On error, deny for safety
+                    return false;
+                }
+            }
+
+            _logger.LogDebug("All ABAC rules passed (custom + generic), allowing request");
             return true;
         }
         catch (Exception ex)

@@ -707,7 +707,7 @@ public class SeedDataService(AccessControlDbContext context)
         return Task.CompletedTask;
     }
 
-    private Task SeedAbacRuleGroupsAsync()
+    private async Task SeedAbacRuleGroupsAsync()
     {
         Console.WriteLine("\n[6/8] Seeding ABAC rule groups (hierarchical rule organization)...");
 
@@ -716,10 +716,34 @@ public class SeedDataService(AccessControlDbContext context)
             new AbacRuleGroup
             {
                 WorkstreamId = "loans",
+                GroupName = "LoanReadAccessChecks",
+                Description = "All checks required for reading loan data",
+                LogicalOperator = "AND",
+                Resource = "Loan/*",
+                Action = "read",
+                Priority = 10,
+                IsActive = true,
+                CreatedAt = DateTimeOffset.UtcNow
+            },
+            new AbacRuleGroup
+            {
+                WorkstreamId = "loans",
+                GroupName = "LoanWriteAccessChecks",
+                Description = "All checks required for writing loan data",
+                LogicalOperator = "AND",
+                Resource = "Loan/*",
+                Action = "write",
+                Priority = 10,
+                IsActive = true,
+                CreatedAt = DateTimeOffset.UtcNow
+            },
+            new AbacRuleGroup
+            {
+                WorkstreamId = "loans",
                 GroupName = "LoanApprovalChecks",
                 Description = "All checks required for loan approval",
                 LogicalOperator = "AND",
-                Resource = "Loan",
+                Resource = "Loan/*",
                 Action = "approve",
                 Priority = 10,
                 IsActive = true,
@@ -731,7 +755,7 @@ public class SeedDataService(AccessControlDbContext context)
                 GroupName = "ClaimsProcessingChecks",
                 Description = "All checks for claims processing",
                 LogicalOperator = "AND",
-                Resource = "Claim",
+                Resource = "Claim/*",
                 Action = "adjudicate",
                 Priority = 10,
                 IsActive = true,
@@ -743,7 +767,7 @@ public class SeedDataService(AccessControlDbContext context)
                 GroupName = "DocumentAccessChecks",
                 Description = "Access control for documents",
                 LogicalOperator = "AND",
-                Resource = "Document",
+                Resource = "Document/*",
                 Action = "read",
                 Priority = 10,
                 IsActive = true,
@@ -752,43 +776,77 @@ public class SeedDataService(AccessControlDbContext context)
         };
 
         _context.AbacRuleGroups.AddRange(ruleGroups);
+        await _context.SaveChangesAsync(); // Save to get IDs for linking rules
 
         foreach (var group in ruleGroups)
         {
-            Console.WriteLine($"  ✓ {group.GroupName} ({group.WorkstreamId})");
+            Console.WriteLine($"  ✓ {group.GroupName} ({group.WorkstreamId}) - Resource: {group.Resource}, Action: {group.Action}");
         }
-
-        return Task.CompletedTask;
     }
 
     private Task SeedAbacRulesAsync()
     {
         Console.WriteLine("\n[7/8] Seeding declarative ABAC rules...");
 
+        // Get the rule group IDs that were just created
+        var loanReadGroup = _context.AbacRuleGroups.First(g => g.GroupName == "LoanReadAccessChecks");
+        var loanWriteGroup = _context.AbacRuleGroups.First(g => g.GroupName == "LoanWriteAccessChecks");
+        var loanApprovalGroup = _context.AbacRuleGroups.First(g => g.GroupName == "LoanApprovalChecks");
+        var claimsGroup = _context.AbacRuleGroups.First(g => g.GroupName == "ClaimsProcessingChecks");
+        var documentsGroup = _context.AbacRuleGroups.First(g => g.GroupName == "DocumentAccessChecks");
+
         var rules = new[]
         {
-            // Loans: Approval limit check (compares user's ApprovalLimit >= loan's RequestedAmount)
+            // Loans: Regional access control for READ operations
+            new AbacRule
+            {
+                RuleName = "LoanRegionalAccessRead",
+                WorkstreamId = "loans",
+                RuleGroupId = loanReadGroup.Id,
+                RuleType = "PropertyMatch",
+                Configuration = "{\"userAttribute\":\"Region\",\"operator\":\"==\",\"resourceProperty\":\"Region\",\"allowWildcard\":\"ALL\"}",
+                Priority = 100,
+                IsActive = true,
+                FailureMessage = "Regional access denied. Users can only access loans in their assigned region."
+            },
+
+            // Loans: Regional access control for WRITE operations
+            new AbacRule
+            {
+                RuleName = "LoanRegionalAccessWrite",
+                WorkstreamId = "loans",
+                RuleGroupId = loanWriteGroup.Id,
+                RuleType = "PropertyMatch",
+                Configuration = "{\"userAttribute\":\"Region\",\"operator\":\"==\",\"resourceProperty\":\"Region\",\"allowWildcard\":\"ALL\"}",
+                Priority = 100,
+                IsActive = true,
+                FailureMessage = "Regional access denied. Users can only modify loans in their assigned region."
+            },
+
+            // Loans: Approval limit check for APPROVAL operations
             new AbacRule
             {
                 RuleName = "LoanApprovalLimitCheck",
                 WorkstreamId = "loans",
+                RuleGroupId = loanApprovalGroup.Id,
                 RuleType = "AttributeComparison",
-                Configuration = "{\"leftAttribute\":\"user.ApprovalLimit\",\"operator\":\"greaterThanOrEqual\",\"rightProperty\":\"RequestedAmount\"}",
+                Configuration = "{\"leftAttribute\":\"ApprovalLimit\",\"operator\":\"greaterThanOrEqual\",\"rightProperty\":\"RequestedAmount\"}",
                 Priority = 100,
                 IsActive = true,
                 FailureMessage = "Approval limit exceeded. User can approve up to the amount specified in their ApprovalLimit attribute."
             },
 
-            // Loans: Regional access control
+            // Loans: Regional access control for APPROVAL operations
             new AbacRule
             {
-                RuleName = "LoanRegionalAccess",
+                RuleName = "LoanRegionalAccessApproval",
                 WorkstreamId = "loans",
+                RuleGroupId = loanApprovalGroup.Id,
                 RuleType = "PropertyMatch",
                 Configuration = "{\"userAttribute\":\"Region\",\"operator\":\"==\",\"resourceProperty\":\"Region\",\"allowWildcard\":\"ALL\"}",
                 Priority = 90,
                 IsActive = true,
-                FailureMessage = "Regional access denied. Users can only access loans in their assigned region."
+                FailureMessage = "Regional access denied. Users can only approve loans in their assigned region."
             },
 
             // Claims: High-value claims require management level 2+
@@ -796,6 +854,7 @@ public class SeedDataService(AccessControlDbContext context)
             {
                 RuleName = "HighValueClaimManagementLevel",
                 WorkstreamId = "claims",
+                RuleGroupId = claimsGroup.Id,
                 RuleType = "ValueRange",
                 Configuration = "{\"resourceProperty\":\"Amount\",\"threshold\":50000,\"requiredAttribute\":\"ManagementLevel\",\"minValue\":2}",
                 Priority = 100,
@@ -808,6 +867,7 @@ public class SeedDataService(AccessControlDbContext context)
             {
                 RuleName = "ConfidentialDocumentsBusinessHours",
                 WorkstreamId = "documents",
+                RuleGroupId = documentsGroup.Id,
                 RuleType = "TimeRestriction",
                 Configuration = "{\"resourceClassification\":\"Confidential\",\"allowedHours\":{\"start\":8,\"end\":18},\"timezone\":\"UTC\"}",
                 Priority = 100,
@@ -820,7 +880,7 @@ public class SeedDataService(AccessControlDbContext context)
 
         foreach (var rule in rules)
         {
-            Console.WriteLine($"  ✓ {rule.RuleName} ({rule.WorkstreamId})");
+            Console.WriteLine($"  ✓ {rule.RuleName} ({rule.WorkstreamId}) - Linked to group {rule.RuleGroupId}");
         }
 
         return Task.CompletedTask;

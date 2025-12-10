@@ -5,6 +5,10 @@ using Api.Modules.AccessControl.Persistence.Repositories.Authorization;
 using Api.Modules.AccessControl.Persistence.Repositories.Attributes;
 using Api.Modules.AccessControl.Persistence.Repositories.AbacRules;
 using Api.Modules.AccessControl.Persistence.Repositories.Audit;
+using Api.Modules.AccessControl.Authorization;
+using Api.Modules.AccessControl.Models;
+using Api.Modules.AccessControl.Persistence;
+using Api.Modules.AccessControl.Interfaces;
 using UI.Modules.AccessControl.Models;
 
 namespace UI.Modules.AccessControl.Services.Testing;
@@ -15,10 +19,22 @@ namespace UI.Modules.AccessControl.Services.Testing;
 public class AuthorizationTestingService(
     IPolicyRepository policyRepository,
     IAbacRuleRepository abacRuleRepository,
+    IUserAttributeRepository userAttributeRepository,
+    IGroupAttributeRepository groupAttributeRepository,
+    IRoleAttributeRepository roleAttributeRepository,
+    AccessControlDbContext accessControlDbContext,
+    ILoggerFactory loggerFactory,
+    IEnumerable<IWorkstreamAbacEvaluator> workstreamEvaluators,
     ILogger<AuthorizationTestingService> logger) : IAuthorizationTestingService
 {
     private readonly IPolicyRepository _policyRepository = policyRepository;
     private readonly IAbacRuleRepository _abacRuleRepository = abacRuleRepository;
+    private readonly IUserAttributeRepository _userAttributeRepository = userAttributeRepository;
+    private readonly IGroupAttributeRepository _groupAttributeRepository = groupAttributeRepository;
+    private readonly IRoleAttributeRepository _roleAttributeRepository = roleAttributeRepository;
+    private readonly AccessControlDbContext _accessControlDbContext = accessControlDbContext;
+    private readonly ILoggerFactory _loggerFactory = loggerFactory;
+    private readonly IEnumerable<IWorkstreamAbacEvaluator> _workstreamEvaluators = workstreamEvaluators;
     private readonly ILogger<AuthorizationTestingService> _logger = logger;
 
     public async Task<AuthorizationTestResult> CheckAuthorizationAsync(AuthorizationTestRequest request)
@@ -171,19 +187,142 @@ public class AuthorizationTestingService(
 
             // Evaluate ABAC rules (if entity provided)
             var abacAllowed = true;
+            string? abacDenyReason = null;
+
             if (!string.IsNullOrWhiteSpace(request.MockEntityJson))
             {
-                var abacRules = (await _abacRuleRepository.SearchAsync(request.WorkstreamId)).ToList();
-
-                // Simulate ABAC evaluation (simplified)
-                trace.Add(new AuthorizationStep
+                try
                 {
-                    StepName = "ABAC Evaluation",
-                    Description = $"Evaluated {abacRules.Count} ABAC rules against mock entity",
-                    Result = "Pass",
-                    Details = "ABAC evaluation requires full context - simulation mode",
-                    Order = stepOrder++
-                });
+                    // Build ABAC context
+                    var abacContext = await BuildAbacContextAsync(
+                        userId,
+                        userName,
+                        groupClaims,
+                        roleClaims,
+                        request.WorkstreamId,
+                        request.MockEntityJson);
+
+                    // Try custom workstream evaluator first
+                    var customEvaluator = _workstreamEvaluators.FirstOrDefault(e => e.WorkstreamId == request.WorkstreamId);
+                    AbacEvaluationResult? customResult = null;
+
+                    if (customEvaluator != null)
+                    {
+                        customResult = await customEvaluator.EvaluateAsync(
+                            abacContext,
+                            request.Resource,
+                            request.Action,
+                            CancellationToken.None);
+
+                        if (customResult != null)
+                        {
+                            trace.Add(new AuthorizationStep
+                            {
+                                StepName = "Custom ABAC Evaluator",
+                                Description = customResult.Allowed
+                                    ? $"Custom evaluator PASSED: {customResult.Reason}"
+                                    : $"Custom evaluator DENIED: {customResult.Reason}",
+                                Result = customResult.Allowed ? "Pass" : "Fail",
+                                Details = $"Workstream '{request.WorkstreamId}' custom evaluator: {customResult.Message ?? customResult.Reason}",
+                                Order = stepOrder++
+                            });
+
+                            abacAllowed = customResult.Allowed;
+                            abacDenyReason = customResult.Reason;
+                        }
+                        else
+                        {
+                            trace.Add(new AuthorizationStep
+                            {
+                                StepName = "Custom ABAC Evaluator",
+                                Description = "Custom evaluator skipped this resource/action",
+                                Result = "Skip",
+                                Details = $"Workstream '{request.WorkstreamId}' custom evaluator returned null - not handling this case",
+                                Order = stepOrder++
+                            });
+                        }
+                    }
+
+                    // Evaluate generic ABAC rules (always run)
+                    var genericEvaluator = new GenericAbacEvaluator(
+                        request.WorkstreamId,
+                        _accessControlDbContext,
+                        _loggerFactory.CreateLogger<GenericAbacEvaluator>());
+
+                    var genericResult = await genericEvaluator.EvaluateAsync(
+                        abacContext,
+                        request.Resource,
+                        request.Action,
+                        CancellationToken.None);
+
+                    if (genericResult != null)
+                    {
+                        trace.Add(new AuthorizationStep
+                        {
+                            StepName = "Generic ABAC Evaluator",
+                            Description = genericResult.Allowed
+                                ? $"Generic ABAC rules PASSED: {genericResult.Reason}"
+                                : $"Generic ABAC rules DENIED: {genericResult.Reason}",
+                            Result = genericResult.Allowed ? "Pass" : "Fail",
+                            Details = genericResult.Message ?? genericResult.Reason ?? "Database-driven ABAC rules evaluated",
+                            Order = stepOrder++
+                        });
+
+                        // Both custom and generic must pass (AND logic)
+                        if (customResult != null)
+                        {
+                            abacAllowed = abacAllowed && genericResult.Allowed;
+                            if (!genericResult.Allowed)
+                            {
+                                abacDenyReason = genericResult.Reason;
+                            }
+                        }
+                        else
+                        {
+                            // No custom result, use generic result
+                            abacAllowed = genericResult.Allowed;
+                            abacDenyReason = genericResult.Reason;
+                        }
+                    }
+                    else
+                    {
+                        trace.Add(new AuthorizationStep
+                        {
+                            StepName = "Generic ABAC Evaluator",
+                            Description = "No applicable generic ABAC rules found",
+                            Result = "Skip",
+                            Details = "Generic evaluator returned null - no database rules apply",
+                            Order = stepOrder++
+                        });
+
+                        // If no generic rules and no custom rules, ABAC passes by default
+                        if (customResult == null)
+                        {
+                            trace.Add(new AuthorizationStep
+                            {
+                                StepName = "ABAC Summary",
+                                Description = "No ABAC rules evaluated - defaulting to RBAC decision only",
+                                Result = "Skip",
+                                Details = "Neither custom nor generic ABAC evaluators returned a result",
+                                Order = stepOrder++
+                            });
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error during ABAC evaluation");
+                    trace.Add(new AuthorizationStep
+                    {
+                        StepName = "ABAC Evaluation Error",
+                        Description = "ABAC evaluation failed with error",
+                        Result = "Fail",
+                        Details = $"Error: {ex.Message}",
+                        Order = stepOrder++
+                    });
+                    abacAllowed = false;
+                    abacDenyReason = $"ABAC evaluation error: {ex.Message}";
+                }
             }
             else
             {
@@ -192,6 +331,7 @@ public class AuthorizationTestingService(
                     StepName = "ABAC Evaluation",
                     Description = "No entity provided - ABAC rules skipped",
                     Result = "Skip",
+                    Details = "MockEntityJson not provided in request",
                     Order = stepOrder++
                 });
             }
@@ -235,6 +375,169 @@ public class AuthorizationTestingService(
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Builds an ABAC context for testing by merging user attributes with mock entity data.
+    /// </summary>
+    private async Task<AbacContext> BuildAbacContextAsync(
+        string userId,
+        string? userName,
+        List<string> groupIds,
+        List<string> roles,
+        string workstreamId,
+        string mockEntityJson)
+    {
+        // Parse mock entity JSON into resource attributes
+        var resourceAttributes = new Dictionary<string, object>();
+        try
+        {
+            _logger.LogInformation("[ABAC CONTEXT] Parsing mock entity JSON: {Json}", mockEntityJson);
+            var mockEntity = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(mockEntityJson);
+            if (mockEntity != null)
+            {
+                foreach (var kvp in mockEntity)
+                {
+                    resourceAttributes[kvp.Key] = kvp.Value.ValueKind switch
+                    {
+                        JsonValueKind.Number => kvp.Value.GetDecimal(),
+                        JsonValueKind.String => kvp.Value.GetString() ?? "",
+                        JsonValueKind.True => true,
+                        JsonValueKind.False => false,
+                        _ => kvp.Value.ToString()
+                    };
+                    _logger.LogInformation("[ABAC CONTEXT] Added resource attribute: {Key} = {Value}", kvp.Key, resourceAttributes[kvp.Key]);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to parse mock entity JSON");
+        }
+
+        _logger.LogInformation("[ABAC CONTEXT] Total resource attributes: {Count}", resourceAttributes.Count);
+
+        // Load user attributes from database
+        var userAttributes = new Dictionary<string, object>();
+
+        // 1. Get user-specific attributes
+        var userAttr = await _userAttributeRepository.GetByUserIdAndWorkstreamAsync(userId, workstreamId);
+        if (userAttr != null && !string.IsNullOrEmpty(userAttr.AttributesJson))
+        {
+            try
+            {
+                var attrs = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(userAttr.AttributesJson);
+                if (attrs != null)
+                {
+                    foreach (var kvp in attrs)
+                    {
+                        userAttributes[kvp.Key] = kvp.Value.ValueKind switch
+                        {
+                            JsonValueKind.Number => kvp.Value.GetDecimal(),
+                            JsonValueKind.String => kvp.Value.GetString() ?? "",
+                            JsonValueKind.True => true,
+                            JsonValueKind.False => false,
+                            _ => kvp.Value.ToString()
+                        };
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to parse user attributes JSON");
+            }
+        }
+
+        // 2. Get group attributes (lower precedence than user)
+        foreach (var groupId in groupIds)
+        {
+            var groupAttr = await _groupAttributeRepository.GetByGroupIdAndWorkstreamAsync(groupId, workstreamId);
+            if (groupAttr != null && !string.IsNullOrEmpty(groupAttr.AttributesJson))
+            {
+                try
+                {
+                    var attrs = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(groupAttr.AttributesJson);
+                    if (attrs != null)
+                    {
+                        foreach (var kvp in attrs)
+                        {
+                            // Only add if not already present (user attributes take precedence)
+                            if (!userAttributes.ContainsKey(kvp.Key))
+                            {
+                                userAttributes[kvp.Key] = kvp.Value.ValueKind switch
+                                {
+                                    JsonValueKind.Number => kvp.Value.GetDecimal(),
+                                    JsonValueKind.String => kvp.Value.GetString() ?? "",
+                                    JsonValueKind.True => true,
+                                    JsonValueKind.False => false,
+                                    _ => kvp.Value.ToString()
+                                };
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse group attributes JSON for group {GroupId}", groupId);
+                }
+            }
+        }
+
+        // 3. Get role attributes (lowest precedence)
+        var allRoleAttrs = await _roleAttributeRepository.SearchAsync(workstreamId);
+        foreach (var role in roles)
+        {
+            var roleAttr = allRoleAttrs.FirstOrDefault(r => r.RoleValue == role);
+            if (roleAttr != null && !string.IsNullOrEmpty(roleAttr.AttributesJson))
+            {
+                try
+                {
+                    var attrs = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(roleAttr.AttributesJson);
+                    if (attrs != null)
+                    {
+                        foreach (var kvp in attrs)
+                        {
+                            // Only add if not already present (user and group attributes take precedence)
+                            if (!userAttributes.ContainsKey(kvp.Key))
+                            {
+                                userAttributes[kvp.Key] = kvp.Value.ValueKind switch
+                                {
+                                    JsonValueKind.Number => kvp.Value.GetDecimal(),
+                                    JsonValueKind.String => kvp.Value.GetString() ?? "",
+                                    JsonValueKind.True => true,
+                                    JsonValueKind.False => false,
+                                    _ => kvp.Value.ToString()
+                                };
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse role attributes JSON for role {RoleId}", role);
+                }
+            }
+        }
+
+        // Build and return ABAC context
+        _logger.LogInformation("[ABAC CONTEXT] Final user attributes count: {Count}", userAttributes.Count);
+        _logger.LogInformation("[ABAC CONTEXT] User attributes: {Attrs}", string.Join(", ", userAttributes.Select(kvp => $"{kvp.Key}={kvp.Value}")));
+        _logger.LogInformation("[ABAC CONTEXT] Resource attributes: {Attrs}", string.Join(", ", resourceAttributes.Select(kvp => $"{kvp.Key}={kvp.Value}")));
+
+        return new AbacContext
+        {
+            UserId = userId,
+            UserDisplayName = userName,
+            UserEmail = null,
+            Roles = [.. roles],
+            Groups = [.. groupIds],
+            UserAttributes = userAttributes,
+            ResourceAttributes = resourceAttributes,
+            RequestTime = DateTimeOffset.UtcNow,
+            ClientIpAddress = "127.0.0.1",
+            IsBusinessHours = true, // Assume business hours for testing
+            IsInternalNetwork = true // Assume internal network for testing
+        };
     }
 
     private static string FormatPolicyDisplay(Api.Modules.AccessControl.Persistence.Entities.Authorization.CasbinPolicy policy)

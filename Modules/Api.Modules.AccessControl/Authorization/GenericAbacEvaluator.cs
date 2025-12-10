@@ -28,23 +28,31 @@ public class GenericAbacEvaluator(
         string action,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogDebug("GenericAbacEvaluator evaluating {Workstream} - {Resource}:{Action}",
+        _logger.LogInformation("[GENERIC ABAC] Evaluating {Workstream} - {Resource}:{Action}",
             WorkstreamId, resource, action);
 
-        // Load applicable rule groups for this resource/action
-        var ruleGroups = await _context.AbacRuleGroups
-            .Where(g => g.WorkstreamId == WorkstreamId &&
-                       g.IsActive &&
-                       (g.Resource == null || g.Resource == resource) &&
-                       (g.Action == null || g.Action == action))
+        // Load all rule groups for this workstream, then filter by resource/action pattern matching
+        // We need to do pattern matching in memory because SQL doesn't support wildcard matching in WHERE clause
+        var allRuleGroups = await _context.AbacRuleGroups
+            .Where(g => g.WorkstreamId == WorkstreamId && g.IsActive)
             .Include(g => g.Rules.Where(r => r.IsActive))
             .Include(g => g.ChildGroups.Where(c => c.IsActive))
             .OrderBy(g => g.Priority)
+            .AsSplitQuery()
             .ToListAsync(cancellationToken);
+
+        // Filter by resource and action patterns (supports wildcards like "Loan/*")
+        var ruleGroups = allRuleGroups
+            .Where(g => (g.Resource == null || ResourceMatches(resource, g.Resource)) &&
+                       (g.Action == null || g.Action == action))
+            .ToList();
+
+        _logger.LogInformation("[GENERIC ABAC] Found {Count} rule groups for {Workstream} - {Resource}:{Action}",
+            ruleGroups.Count, WorkstreamId, resource, action);
 
         if (ruleGroups.Count == 0)
         {
-            _logger.LogDebug("No rule groups found for {Workstream} - {Resource}:{Action}",
+            _logger.LogInformation("[GENERIC ABAC] No rule groups found for {Workstream} - {Resource}:{Action}",
                 WorkstreamId, resource, action);
             return null; // No declarative rules configured
         }
@@ -218,11 +226,29 @@ public class GenericAbacEvaluator(
         var op = config.RootElement.GetProperty("operator").GetString();
         var resourceProp = config.RootElement.GetProperty("resourceProperty").GetString();
 
-        var userValue = GetContextValue(context, userAttr);
-        var resourceValue = GetContextValue(context, resourceProp);
+        _logger.LogInformation("[PROPERTY MATCH] Rule '{RuleName}': Checking {UserAttr} {Op} {ResourceProp}",
+            rule.RuleName, userAttr, op, resourceProp);
+
+        // Get user value from user attributes
+        object? userValue = null;
+        if (!string.IsNullOrEmpty(userAttr))
+        {
+            context.UserAttributes.TryGetValue(userAttr, out userValue);
+        }
+
+        // Get resource value from resource attributes
+        object? resourceValue = null;
+        if (!string.IsNullOrEmpty(resourceProp))
+        {
+            context.ResourceAttributes.TryGetValue(resourceProp, out resourceValue);
+        }
+
+        _logger.LogInformation("[PROPERTY MATCH] Values: userValue={UserValue}, resourceValue={ResourceValue}",
+            userValue, resourceValue);
 
         if (userValue == null || resourceValue == null)
         {
+            _logger.LogInformation("[PROPERTY MATCH] Skipping rule - missing values");
             return null; // Cannot evaluate
         }
 
@@ -230,16 +256,21 @@ public class GenericAbacEvaluator(
         if (config.RootElement.TryGetProperty("allowWildcard", out var wildcardElement))
         {
             var wildcardValue = wildcardElement.GetString();
+            _logger.LogInformation("[PROPERTY MATCH] Checking wildcard: allowWildcard={WildcardValue}, userValue={UserValue}",
+                wildcardValue, userValue);
             if (!string.IsNullOrEmpty(wildcardValue) &&
                 userValue.ToString()!.Equals(wildcardValue, StringComparison.OrdinalIgnoreCase))
             {
-                _logger.LogDebug("Rule '{RuleName}' passed via wildcard: {UserAttr}={WildcardValue}",
+                _logger.LogInformation("[PROPERTY MATCH] Rule '{RuleName}' passed via wildcard: {UserAttr}={WildcardValue}",
                     rule.RuleName, userAttr, wildcardValue);
                 return AbacEvaluationResult.Allow($"Rule '{rule.RuleName}' passed (wildcard bypass: {userAttr}={wildcardValue})");
             }
         }
 
         var result = CompareValues(userValue, op!, resourceValue);
+
+        _logger.LogInformation("[PROPERTY MATCH] Comparison result: {Result} ({UserValue} {Op} {ResourceValue})",
+            result, userValue, op, resourceValue);
 
         if (!result)
         {
@@ -434,19 +465,36 @@ public class GenericAbacEvaluator(
     /// <summary>
     /// Gets a value from the ABAC context by property name.
     /// Supports dynamic attribute lookup from UserAttributes and ResourceAttributes dictionaries.
+    /// Supports prefixes: "user.PropertyName", "resource.PropertyName", or plain "PropertyName" (checks user first, then resource).
     /// </summary>
     private static object? GetContextValue(AbacContext context, string? propertyName)
     {
         if (string.IsNullOrEmpty(propertyName))
             return null;
 
-        // Try user attributes first
-        if (context.UserAttributes.TryGetValue(propertyName, out var userValue))
+        // Check for explicit prefix to avoid ambiguity
+        if (propertyName.StartsWith("user.", StringComparison.OrdinalIgnoreCase))
+        {
+            var attrName = propertyName.Substring(5); // Remove "user." prefix
+            context.UserAttributes.TryGetValue(attrName, out var userValue);
             return userValue;
+        }
 
-        // Try resource attributes
-        if (context.ResourceAttributes.TryGetValue(propertyName, out var resourceValue))
+        if (propertyName.StartsWith("resource.", StringComparison.OrdinalIgnoreCase))
+        {
+            var attrName = propertyName.Substring(9); // Remove "resource." prefix
+            context.ResourceAttributes.TryGetValue(attrName, out var resourceValue);
             return resourceValue;
+        }
+
+        // No prefix - try resource attributes first (safer default for most rules)
+        // Resource-specific rules should take precedence to avoid user attribute shadowing
+        if (context.ResourceAttributes.TryGetValue(propertyName, out var resValue))
+            return resValue;
+
+        // Then try user attributes
+        if (context.UserAttributes.TryGetValue(propertyName, out var usrValue))
+            return usrValue;
 
         // Try environment attributes (hardcoded - computed at runtime, not from database)
         return propertyName switch
@@ -461,6 +509,10 @@ public class GenericAbacEvaluator(
 
     private bool CompareValues(object left, string op, object right)
     {
+        // Unwrap JsonElement values if present
+        left = UnwrapJsonElement(left) ?? left;
+        right = UnwrapJsonElement(right) ?? right;
+
         // Handle null comparisons
         if (left == null && right == null)
             return op == "==" || op == "equals";
@@ -504,5 +556,55 @@ public class GenericAbacEvaluator(
     {
         return value is int or long or decimal or double or float
                || decimal.TryParse(value?.ToString(), out _);
+    }
+
+    /// <summary>
+    /// Unwraps a JsonElement to its underlying value.
+    /// Used to handle values from JSON deserialization that are still wrapped as JsonElement.
+    /// </summary>
+    private static object? UnwrapJsonElement(object? value)
+    {
+        if (value is not JsonElement jsonElement)
+            return value;
+
+        return jsonElement.ValueKind switch
+        {
+            JsonValueKind.Number => jsonElement.TryGetDecimal(out var d) ? d : jsonElement.GetDouble(),
+            JsonValueKind.String => jsonElement.GetString(),
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Null => null,
+            _ => value
+        };
+    }
+
+    /// <summary>
+    /// Checks if a resource matches a resource pattern.
+    /// Supports wildcard patterns like "Loan/*" matching "Loan/123-456-789".
+    /// </summary>
+    /// <param name="resource">The actual resource being accessed (e.g., "Loan/67d4de7c-...")</param>
+    /// <param name="pattern">The pattern to match against (e.g., "Loan/*" or "Loan")</param>
+    /// <returns>True if the resource matches the pattern</returns>
+    private static bool ResourceMatches(string resource, string pattern)
+    {
+        // Exact match
+        if (resource == pattern)
+            return true;
+
+        // Wildcard pattern matching
+        // "Loan/*" matches "Loan/123", "Loan/abc", etc.
+        // "Loan" matches "Loan" exactly
+        if (pattern.EndsWith("/*"))
+        {
+            var prefix = pattern[..^2]; // Remove "/*" suffix
+            return resource.StartsWith(prefix + "/", StringComparison.OrdinalIgnoreCase) ||
+                   resource.Equals(prefix, StringComparison.OrdinalIgnoreCase);
+        }
+
+        // "*" matches everything
+        if (pattern == "*")
+            return true;
+
+        return false;
     }
 }

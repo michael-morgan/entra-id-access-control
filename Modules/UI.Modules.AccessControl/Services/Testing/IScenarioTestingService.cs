@@ -36,4 +36,5 @@ public class DynamicScenario
     public required string Resource { get; init; }
     public required List<string> AvailableActions { get; init; }
     public required string WorkstreamId { get; init; }
+    public string? MockEntityJson { get; init; }
 }
