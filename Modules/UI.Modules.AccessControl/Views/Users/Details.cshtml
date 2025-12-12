@@ -72,7 +72,17 @@
                         {
                             <div class="list-group-item">
                                 <div class="d-flex w-100 justify-content-between">
-                                    <h6 class="mb-1">@group.DisplayName</h6>
+                                    <h6 class="mb-1">
+                                        <a asp-controller="Groups" asp-action="Details" asp-route-id="@group.Id">
+                                            @group.DisplayName
+                                        </a>
+                                        @if (group.DisplayName == group.Id)
+                                        {
+                                            <span class="badge bg-warning text-dark ms-2" title="This group needs enrichment">
+                                                <i class="bi bi-exclamation-triangle"></i> Needs Name
+                                            </span>
+                                        }
+                                    </h6>
                                 </div>
                                 @if (!string.IsNullOrEmpty(group.Description))
                                 {

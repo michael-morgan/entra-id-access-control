@@ -15,11 +15,11 @@ namespace UI.Modules.AccessControl.Services.Attributes;
 /// </summary>
 public class GroupAttributeManagementService(
     IGroupAttributeRepository groupAttributeRepository,
-    GraphGroupService graphGroupService,
+    IGraphGroupService graphGroupService,
     ILogger<GroupAttributeManagementService> logger) : IGroupAttributeManagementService
 {
     private readonly IGroupAttributeRepository _groupAttributeRepository = groupAttributeRepository;
-    private readonly GraphGroupService _graphGroupService = graphGroupService;
+    private readonly IGraphGroupService _graphGroupService = graphGroupService;
     private readonly ILogger<GroupAttributeManagementService> _logger = logger;
 
     /// <inheritdoc />

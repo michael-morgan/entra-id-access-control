@@ -3,12 +3,14 @@ using Api.Modules.DemoApi.Data;
 using Api.Modules.DemoApi.Services.Claims;
 using Api.Modules.DemoApi.Services.Documents;
 using Api.Modules.DemoApi.Services.Loans;
+using Api.Modules.DemoApi.Swagger;
 using Api.Modules.AccessControl.Interfaces;
 using Api.Modules.AccessControl;
 using Api.Modules.AccessControl.Persistence;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -43,6 +45,35 @@ builder.Services.AddSwaggerGen(options =>
         Version = "v1",
         Description = "Enterprise Access Control Framework - Proof of Concept with Loans, Claims, and Documents workstreams"
     });
+
+    // Add JWT Bearer authentication to Swagger
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Enter your token in the text input below.\n\nExample: \"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...\"",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT"
+    });
+
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+
+    // Add X-Workstream-Id header to all operations
+    options.OperationFilter<WorkstreamHeaderOperationFilter>();
 });
 
 // Add Access Control Framework (includes correlation, authorization, events, audit)
@@ -136,6 +167,10 @@ app.UseAccessControlFramework();
 app.UseAccessControlAbac();
 
 app.UseAuthentication();
+
+// Sync JWT groups to database for UI display (after auth, before authz)
+app.UseGroupSync();
+
 app.UseAuthorization();
 
 app.MapControllers();

@@ -17,11 +17,11 @@ namespace UI.Modules.AccessControl.Controllers.Users;
 [Authorize]
 [AuthorizeForScopes(ScopeKeySection = "DownstreamApi:Scopes")]
 public class UsersController(
-    GraphUserService graphUserService,
+    IGraphUserService graphUserService,
     IUserManagementService userManagementService,
     ILogger<UsersController> logger) : Controller
 {
-    private readonly GraphUserService _graphUserService = graphUserService;
+    private readonly IGraphUserService _graphUserService = graphUserService;
     private readonly IUserManagementService _userManagementService = userManagementService;
     private readonly ILogger<UsersController> _logger = logger;
 

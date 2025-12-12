@@ -6,7 +6,7 @@ namespace UI.Modules.AccessControl.Services.Graph;
 public class GraphUserService(
     GraphServiceClient graphServiceClient,
     IConfiguration configuration,
-    ILogger<GraphUserService> logger)
+    ILogger<GraphUserService> logger) : IGraphUserService
 {
     private readonly GraphServiceClient _graphClient = graphServiceClient;
     private readonly ILogger<GraphUserService> _logger = logger;

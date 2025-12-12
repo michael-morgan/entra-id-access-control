@@ -5,8 +5,8 @@ namespace UI.Modules.AccessControl.Models;
 
 public class UserDetailsViewModel
 {
-    public User User { get; set; } = null!;
-    public List<Group> Groups { get; set; } = [];
+    public Microsoft.Graph.Models.User User { get; set; } = null!;
+    public List<Microsoft.Graph.Models.Group> Groups { get; set; } = [];
     public List<UserAttribute> UserAttributes { get; set; } = [];
     public List<string> RoleAssignments { get; set; } = [];
 }

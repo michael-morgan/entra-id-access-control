@@ -10,7 +10,7 @@ namespace UI.Modules.AccessControl.Services.Graph;
 public class CachedGraphGroupService(
     GraphGroupService graphGroupService,
     IMemoryCache cache,
-    ILogger<CachedGraphGroupService> logger)
+    ILogger<CachedGraphGroupService> logger) : IGraphGroupService
 {
     private readonly GraphGroupService _graphGroupService = graphGroupService;
     private readonly IMemoryCache _cache = cache;

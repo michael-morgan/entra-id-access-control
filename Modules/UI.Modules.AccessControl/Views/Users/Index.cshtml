@@ -14,7 +14,7 @@
     <div class="row">
         <div class="col-md-6">
             <div class="input-group">
-                <input type="text" name="searchTerm" class="form-control" placeholder="Search by name or email..." value="@ViewBag.SearchTerm" />
+                <input type="text" name="searchTerm" class="form-control" placeholder="Search by name..." value="@ViewBag.SearchTerm" />
                 <button class="btn btn-primary" type="submit">
                     <i class="bi bi-search"></i> Search
                 </button>
@@ -40,7 +40,6 @@
         <thead>
             <tr>
                 <th>Display Name</th>
-                <th>Email</th>
                 <th>Job Title</th>
                 <th>Department</th>
                 <th>Actions</th>
@@ -50,7 +49,7 @@
             @if (!Model.Any())
             {
                 <tr>
-                    <td colspan="5" class="text-center text-muted">
+                    <td colspan="4" class="text-center text-muted">
                         @if (!string.IsNullOrEmpty(ViewBag.SearchTerm))
                         {
                             <p>No users found matching "@ViewBag.SearchTerm".</p>
@@ -70,7 +69,6 @@
                         <td>
                             <strong>@user.DisplayName</strong>
                         </td>
-                        <td>@user.Mail</td>
                         <td>@user.JobTitle</td>
                         <td>@user.Department</td>
                         <td>

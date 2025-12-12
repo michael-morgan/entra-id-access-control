@@ -21,8 +21,8 @@ public class TokenAnalysisService(
     IPolicyRepository policyRepository,
     IAbacRuleRepository abacRuleRepository,
     IAbacRuleGroupRepository abacRuleGroupRepository,
-    CachedGraphUserService cachedGraphUserService,
-    CachedGraphGroupService cachedGraphGroupService,
+    IGraphUserService cachedGraphUserService,
+    IGraphGroupService cachedGraphGroupService,
     ILogger<TokenAnalysisService> logger) : ITokenAnalysisService
 {
     private readonly IUserAttributeRepository _userAttributeRepository = userAttributeRepository;
@@ -31,8 +31,8 @@ public class TokenAnalysisService(
     private readonly IPolicyRepository _policyRepository = policyRepository;
     private readonly IAbacRuleRepository _abacRuleRepository = abacRuleRepository;
     private readonly IAbacRuleGroupRepository _abacRuleGroupRepository = abacRuleGroupRepository;
-    private readonly CachedGraphUserService _cachedGraphUserService = cachedGraphUserService;
-    private readonly CachedGraphGroupService _cachedGraphGroupService = cachedGraphGroupService;
+    private readonly IGraphUserService _cachedGraphUserService = cachedGraphUserService;
+    private readonly IGraphGroupService _cachedGraphGroupService = cachedGraphGroupService;
     private readonly ILogger<TokenAnalysisService> _logger = logger;
 
     /// <inheritdoc/>

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.FeatureManagement;
 using Microsoft.Identity.Web;
 using Microsoft.Identity.Web.UI;
 using UI.Modules.AccessControl.Middleware;
@@ -17,8 +18,12 @@ using UI.Modules.AccessControl.Services.Authorization.Resources;
 using UI.Modules.AccessControl.Services.Authorization.AbacRules;
 using UI.Modules.AccessControl.Services.Authorization.Users;
 using UI.Modules.AccessControl.Services.Audit;
+using UI.Modules.AccessControl.Services.Groups;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Add Feature Management
+builder.Services.AddFeatureManagement();
 
 // Configure authentication with Entra ID and Graph API
 var initialScopes = builder.Configuration["DownstreamApi:Scopes"]?.Split(' ');
@@ -88,6 +93,9 @@ builder.Services.AddScoped<IBusinessEventQueryService, BusinessEventQueryService
 builder.Services.AddScoped<Api.Modules.AccessControl.Persistence.Repositories.Authorization.IPolicyRepository, Api.Modules.AccessControl.Persistence.Repositories.Authorization.PolicyRepository>();
 builder.Services.AddScoped<Api.Modules.AccessControl.Persistence.Repositories.Authorization.IRoleRepository, Api.Modules.AccessControl.Persistence.Repositories.Authorization.RoleRepository>();
 builder.Services.AddScoped<Api.Modules.AccessControl.Persistence.Repositories.Authorization.IResourceRepository, Api.Modules.AccessControl.Persistence.Repositories.Authorization.ResourceRepository>();
+builder.Services.AddScoped<Api.Modules.AccessControl.Persistence.Repositories.Authorization.IUserRepository, Api.Modules.AccessControl.Persistence.Repositories.Authorization.UserRepository>();
+builder.Services.AddScoped<Api.Modules.AccessControl.Persistence.Repositories.Authorization.IGroupRepository, Api.Modules.AccessControl.Persistence.Repositories.Authorization.GroupRepository>();
+builder.Services.AddScoped<Api.Modules.AccessControl.Persistence.Repositories.Authorization.IUserGroupRepository, Api.Modules.AccessControl.Persistence.Repositories.Authorization.UserGroupRepository>();
 builder.Services.AddScoped<Api.Modules.AccessControl.Persistence.Repositories.Attributes.IGroupAttributeRepository, Api.Modules.AccessControl.Persistence.Repositories.Attributes.GroupAttributeRepository>();
 builder.Services.AddScoped<Api.Modules.AccessControl.Persistence.Repositories.Attributes.IUserAttributeRepository, Api.Modules.AccessControl.Persistence.Repositories.Attributes.UserAttributeRepository>();
 builder.Services.AddScoped<Api.Modules.AccessControl.Persistence.Repositories.AbacRules.IAbacRuleGroupRepository, Api.Modules.AccessControl.Persistence.Repositories.AbacRules.AbacRuleGroupRepository>();
@@ -108,14 +116,28 @@ builder.Services.AddScoped<IAttributeSchemaManagementService, AttributeSchemaMan
 builder.Services.AddScoped<IRoleAttributeManagementService, RoleAttributeManagementService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
+builder.Services.AddScoped<IGroupManagementService, GroupManagementService>();
 
-// Add Graph API services (base services)
-builder.Services.AddScoped<GraphUserService>();
-builder.Services.AddScoped<GraphGroupService>();
+// Add Global Attribute Service (used by DatabaseUserService)
+builder.Services.AddScoped<IGlobalAttributeService, GlobalAttributeService>();
 
-// Add cached Graph API services (wrappers with caching)
-builder.Services.AddScoped<CachedGraphUserService>();
-builder.Services.AddScoped<CachedGraphGroupService>();
+// Conditional Graph API service registration based on feature flag
+var graphApiEnabled = builder.Configuration.GetValue<bool>("FeatureManagement:GraphApi");
+
+if (graphApiEnabled)
+{
+    // Graph API enabled: Use real Graph services with caching
+    builder.Services.AddScoped<GraphUserService>();
+    builder.Services.AddScoped<GraphGroupService>();
+    builder.Services.AddScoped<IGraphUserService, CachedGraphUserService>();
+    builder.Services.AddScoped<IGraphGroupService, CachedGraphGroupService>();
+}
+else
+{
+    // Graph API disabled: Use database-backed services
+    builder.Services.AddScoped<IGraphUserService, DatabaseUserService>();
+    builder.Services.AddScoped<IGraphGroupService, DatabaseGroupService>();
+}
 
 // Add testing services for TestController
 builder.Services.AddScoped<ITokenAnalysisService, TokenAnalysisService>();

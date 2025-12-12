@@ -1,0 +1,92 @@
+@model List<UI.Modules.AccessControl.Models.GroupListItemViewModel>
+
+@{
+    ViewData["Title"] = "Groups";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Groups</h1>
+    <a asp-action="StaleAssociations" class="btn btn-outline-warning">
+        <i class="bi bi-exclamation-triangle"></i> View Stale Associations
+    </a>
+</div>
+
+<p class="text-muted">
+    View and manage Entra ID groups. Groups auto-discovered from JWT tokens can be enriched with friendly names and descriptions.
+</p>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>Display Name</th>
+                <th>Description</th>
+                <th>Source</th>
+                <th>Members</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (!Model.Any())
+            {
+                <tr>
+                    <td colspan="5" class="text-center text-muted">
+                        <p>No groups found. Groups will be auto-discovered from JWT tokens when users authenticate.</p>
+                    </td>
+                </tr>
+            }
+            else
+            {
+                @foreach (var group in Model)
+                {
+                    <tr class="@(group.NeedsEnrichment ? "table-warning" : "")">
+                        <td>
+                            @group.DisplayName
+                            @if (group.NeedsEnrichment)
+                            {
+                                <span class="badge bg-warning text-dark" title="This group shows only its OID. Click Edit to add a friendly name.">
+                                    <i class="bi bi-exclamation-triangle"></i> Needs Enrichment
+                                </span>
+                            }
+                        </td>
+                        <td>@(group.Description ?? "-")</td>
+                        <td><span class="badge bg-info">@group.Source</span></td>
+                        <td>@group.UserCount</td>
+                        <td>
+                            <a asp-action="Details" asp-route-id="@group.GroupId" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i> Details
+                            </a>
+                            <a asp-action="Edit" asp-route-id="@group.GroupId" class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-pencil"></i> Edit
+                            </a>
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+<div class="mt-3">
+    <small class="text-muted">
+        <i class="bi bi-info-circle"></i>
+        Groups are automatically discovered from JWT tokens and synced to the database for display purposes.
+        The JWT groups claim is always the source of truth for authorization decisions.
+    </small>
+</div>

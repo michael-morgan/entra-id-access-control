@@ -14,11 +14,11 @@ namespace UI.Modules.AccessControl.Services.Audit;
 /// </summary>
 public class AuditLogService(
     IAuditLogRepository auditLogRepository,
-    CachedGraphUserService cachedGraphUserService,
+    IGraphUserService cachedGraphUserService,
     ILogger<AuditLogService> logger) : IAuditLogService
 {
     private readonly IAuditLogRepository _auditLogRepository = auditLogRepository;
-    private readonly CachedGraphUserService _cachedGraphUserService = cachedGraphUserService;
+    private readonly IGraphUserService _cachedGraphUserService = cachedGraphUserService;
     private readonly ILogger<AuditLogService> _logger = logger;
 
     public async Task<(IEnumerable<AuditLog> AuditLogs, Dictionary<string, string> UserDisplayNames)>

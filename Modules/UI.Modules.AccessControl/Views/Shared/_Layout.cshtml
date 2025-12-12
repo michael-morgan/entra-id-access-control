@@ -59,6 +59,9 @@
                         <li class="nav-item">
                             <a class="nav-link" asp-controller="Users" asp-action="Index" data-nav-target="Users">Users</a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Groups" asp-action="Index" data-nav-target="Groups">Groups</a>
+                        </li>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="policiesDropdown" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" data-nav-target="Policies">
                                 Policies
@@ -146,6 +149,8 @@
                             </a>
                             <div class="dropdown-menu dropdown-menu-end" aria-labelledby="workstreamDropdown">
                                 <h6 class="dropdown-header">Select Workstream</h6>
+                                <a class="dropdown-item workstream-option" href="#" data-workstream="global">Global</a>
+                                <div class="dropdown-divider"></div>
                                 <a class="dropdown-item workstream-option" href="#" data-workstream="platform">Platform</a>
                                 <a class="dropdown-item workstream-option" href="#" data-workstream="loans">Loans</a>
                                 <a class="dropdown-item workstream-option" href="#" data-workstream="claims">Claims</a>

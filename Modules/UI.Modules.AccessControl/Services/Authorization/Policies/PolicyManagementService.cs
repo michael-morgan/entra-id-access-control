@@ -18,15 +18,15 @@ public class PolicyManagementService(
     IPolicyRepository policyRepository,
     IRoleRepository roleRepository,
     IResourceRepository resourceRepository,
-    CachedGraphUserService userService,
-    CachedGraphGroupService groupService,
+    IGraphUserService userService,
+    IGraphGroupService groupService,
     ILogger<PolicyManagementService> logger) : IPolicyManagementService
 {
     private readonly IPolicyRepository _policyRepository = policyRepository;
     private readonly IRoleRepository _roleRepository = roleRepository;
     private readonly IResourceRepository _resourceRepository = resourceRepository;
-    private readonly CachedGraphUserService _userService = userService;
-    private readonly CachedGraphGroupService _groupService = groupService;
+    private readonly IGraphUserService _userService = userService;
+    private readonly IGraphGroupService _groupService = groupService;
     private readonly ILogger<PolicyManagementService> _logger = logger;
 
     /// <inheritdoc />

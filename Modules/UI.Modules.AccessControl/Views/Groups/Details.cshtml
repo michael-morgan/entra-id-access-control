@@ -1,0 +1,98 @@
+@model UI.Modules.AccessControl.Models.GroupDetailsViewModel
+
+@{
+    ViewData["Title"] = $"Group: {Model.DisplayName}";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">Groups</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Model.DisplayName</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>@Model.DisplayName</h1>
+    <div>
+        <a asp-action="Edit" asp-route-id="@Model.GroupId" class="btn btn-outline-secondary">
+            <i class="bi bi-pencil"></i> Edit
+        </a>
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>
+
+@if (Model.NeedsEnrichment)
+{
+    <div class="alert alert-warning" role="alert">
+        <i class="bi bi-exclamation-triangle"></i>
+        This group displays only its Entra ID Object ID. Click <strong>Edit</strong> to add a friendly display name and description.
+    </div>
+}
+
+<div class="card mb-3">
+    <div class="card-header">
+        <h5 class="mb-0">Group Information</h5>
+    </div>
+    <div class="card-body">
+        <dl class="row">
+            <dt class="col-sm-3">Group ID (Entra OID)</dt>
+            <dd class="col-sm-9"><code>@Model.GroupId</code></dd>
+
+            <dt class="col-sm-3">Display Name</dt>
+            <dd class="col-sm-9">@Model.DisplayName</dd>
+
+            <dt class="col-sm-3">Description</dt>
+            <dd class="col-sm-9">@(Model.Description ?? "-")</dd>
+
+            <dt class="col-sm-3">Source</dt>
+            <dd class="col-sm-9"><span class="badge bg-info">@Model.Source</span></dd>
+
+            <dt class="col-sm-3">Created At</dt>
+            <dd class="col-sm-9">@Model.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</dd>
+        </dl>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Members (@Model.Members.Count)</h5>
+    </div>
+    <div class="card-body">
+        @if (!Model.Members.Any())
+        {
+            <p class="text-muted">No members found. Members will appear when users authenticate with JWT tokens containing this group.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>First Seen</th>
+                            <th>Last Seen</th>
+                            <th>Source</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var member in Model.Members.OrderBy(m => m.User?.Name))
+                        {
+                            <tr>
+                                <td>
+                                    <a asp-controller="Users" asp-action="Details" asp-route-id="@member.UserId">
+                                        @(member.User?.Name ?? member.UserId)
+                                    </a>
+                                </td>
+                                <td>@member.FirstSeenAt.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td>@member.LastSeenAt.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td><span class="badge bg-secondary">@member.Source</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

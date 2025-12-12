@@ -12,6 +12,9 @@ public partial class AccessControlDbContext
     public DbSet<CasbinPolicy> CasbinPolicies => Set<CasbinPolicy>();
     public DbSet<CasbinRole> CasbinRoles => Set<CasbinRole>();
     public DbSet<CasbinResource> CasbinResources => Set<CasbinResource>();
+    public DbSet<User> Users => Set<User>();
+    public DbSet<Group> Groups => Set<Group>();
+    public DbSet<UserGroup> UserGroups => Set<UserGroup>();
     public DbSet<UserAttribute> UserAttributes => Set<UserAttribute>();
     public DbSet<GroupAttribute> GroupAttributes => Set<GroupAttribute>();
     public DbSet<RoleAttribute> RoleAttributes => Set<RoleAttribute>();
@@ -56,6 +59,48 @@ public partial class AccessControlDbContext
             entity.HasIndex(e => new { e.ResourcePattern, e.WorkstreamId })
                 .IsUnique()
                 .HasDatabaseName("IX_CasbinResources_Pattern_Workstream");
+        });
+
+        // User indexes - UserId is the primary key
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.ToTable("Users", "auth");
+            entity.HasKey(e => e.UserId);
+        });
+
+        // Group indexes - GroupId is the primary key
+        modelBuilder.Entity<Group>(entity =>
+        {
+            entity.ToTable("Groups", "auth");
+            entity.HasKey(e => e.GroupId);
+        });
+
+        // UserGroup indexes and relationships
+        modelBuilder.Entity<UserGroup>(entity =>
+        {
+            entity.ToTable("UserGroups", "auth");
+            entity.HasKey(e => e.Id);
+
+            // Unique constraint on (UserId, GroupId) - prevent duplicates
+            entity.HasIndex(e => new { e.UserId, e.GroupId })
+                .IsUnique()
+                .HasDatabaseName("IX_UserGroups_UserId_GroupId");
+
+            // Index on LastSeenAt for stale data queries
+            entity.HasIndex(e => e.LastSeenAt)
+                .HasDatabaseName("IX_UserGroups_LastSeenAt");
+
+            // Foreign key to Users
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Foreign key to Groups
+            entity.HasOne(e => e.Group)
+                .WithMany(g => g.UserGroups)
+                .HasForeignKey(e => e.GroupId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // UserAttribute indexes - composite unique on UserId + WorkstreamId

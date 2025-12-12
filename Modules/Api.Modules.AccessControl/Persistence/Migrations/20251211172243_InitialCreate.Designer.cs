@@ -9,23 +9,95 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace Api.Modules.AccessControl.Persistence.Migrations.Authorization
+namespace Api.Modules.AccessControl.Persistence.Migrations
 {
     [DbContext(typeof(AccessControlDbContext))]
-    [Migration("20251204015228_AddAbacRuleGroups")]
-    partial class AddAbacRuleGroups
+    [Migration("20251211172243_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
+                .HasDefaultSchema("auth")
                 .HasAnnotation("ProductVersion", "8.0.22")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("AccessControl.Framework.SqlServer.Entities.Authorization.AbacRule", b =>
+            modelBuilder.Entity("Api.Modules.AccessControl.Persistence.Entities.Audit.AuditLog", b =>
+                {
+                    b.Property<long>("AuditId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("AuditId"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("AuditData")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BusinessProcessId")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("EntityId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("EntityType")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("RequestCorrelationId")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("UserId")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("WorkstreamId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("AuditId");
+
+                    b.HasIndex("BusinessProcessId")
+                        .HasDatabaseName("IX_AuditLogs_BusinessProcess");
+
+                    b.HasIndex("RequestCorrelationId")
+                        .HasDatabaseName("IX_AuditLogs_RequestCorrelation");
+
+                    b.HasIndex("UpdatedAt")
+                        .HasDatabaseName("IX_AuditLogs_UpdatedAt");
+
+                    b.HasIndex("EntityType", "EntityId")
+                        .HasDatabaseName("IX_AuditLogs_Entity");
+
+                    b.HasIndex("UserId", "UpdatedAt")
+                        .HasDatabaseName("IX_AuditLogs_User_UpdatedAt");
+
+                    b.HasIndex("WorkstreamId", "UpdatedAt")
+                        .HasDatabaseName("IX_AuditLogs_Workstream_UpdatedAt");
+
+                    b.ToTable("AuditLogs", "audit");
+                });
+
+            modelBuilder.Entity("Api.Modules.AccessControl.Persistence.Entities.Authorization.AbacRule", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -93,7 +165,7 @@ namespace Api.Modules.AccessControl.Persistence.Migrations.Authorization
                     b.ToTable("AbacRules", "auth");
                 });
 
-            modelBuilder.Entity("AccessControl.Framework.SqlServer.Entities.Authorization.AbacRuleGroup", b =>
+            modelBuilder.Entity("Api.Modules.AccessControl.Persistence.Entities.Authorization.AbacRuleGroup", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -169,7 +241,7 @@ namespace Api.Modules.AccessControl.Persistence.Migrations.Authorization
                     b.ToTable("AbacRuleGroups", "auth");
                 });
 
-            modelBuilder.Entity("AccessControl.Framework.SqlServer.Entities.Authorization.AttributeSchema", b =>
+            modelBuilder.Entity("Api.Modules.AccessControl.Persistence.Entities.Authorization.AttributeSchema", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -247,7 +319,7 @@ namespace Api.Modules.AccessControl.Persistence.Migrations.Authorization
                     b.ToTable("AttributeSchemas", "auth");
                 });
 
-            modelBuilder.Entity("AccessControl.Framework.SqlServer.Entities.Authorization.CasbinPolicy", b =>
+            modelBuilder.Entity("Api.Modules.AccessControl.Persistence.Entities.Authorization.CasbinPolicy", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -317,7 +389,7 @@ namespace Api.Modules.AccessControl.Persistence.Migrations.Authorization
                     b.ToTable("CasbinPolicies", "auth");
                 });
 
-            modelBuilder.Entity("AccessControl.Framework.SqlServer.Entities.Authorization.CasbinResource", b =>
+            modelBuilder.Entity("Api.Modules.AccessControl.Persistence.Entities.Authorization.CasbinResource", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -371,7 +443,7 @@ namespace Api.Modules.AccessControl.Persistence.Migrations.Authorization
                     b.ToTable("CasbinResources", "auth");
                 });
 
-            modelBuilder.Entity("AccessControl.Framework.SqlServer.Entities.Authorization.CasbinRole", b =>
+            modelBuilder.Entity("Api.Modules.AccessControl.Persistence.Entities.Authorization.CasbinRole", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -430,7 +502,45 @@ namespace Api.Modules.AccessControl.Persistence.Migrations.Authorization
                     b.ToTable("CasbinRoles", "auth");
                 });
 
-            modelBuilder.Entity("AccessControl.Framework.SqlServer.Entities.Authorization.GroupAttribute", b =>
+            modelBuilder.Entity("Api.Modules.AccessControl.Persistence.Entities.Authorization.Group", b =>
+                {
+                    b.Property<string>("GroupId")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("DisplayName")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTimeOffset?>("ModifiedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("GroupId");
+
+                    b.ToTable("Groups", "auth");
+                });
+
+            modelBuilder.Entity("Api.Modules.AccessControl.Persistence.Entities.Authorization.GroupAttribute", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -484,7 +594,7 @@ namespace Api.Modules.AccessControl.Persistence.Migrations.Authorization
                     b.ToTable("GroupAttributes", "auth");
                 });
 
-            modelBuilder.Entity("AccessControl.Framework.SqlServer.Entities.Authorization.RoleAttribute", b =>
+            modelBuilder.Entity("Api.Modules.AccessControl.Persistence.Entities.Authorization.RoleAttribute", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -546,7 +656,37 @@ namespace Api.Modules.AccessControl.Persistence.Migrations.Authorization
                     b.ToTable("RoleAttributes", "auth");
                 });
 
-            modelBuilder.Entity("AccessControl.Framework.SqlServer.Entities.Authorization.UserAttribute", b =>
+            modelBuilder.Entity("Api.Modules.AccessControl.Persistence.Entities.Authorization.User", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTimeOffset?>("ModifiedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("Users", "auth");
+                });
+
+            modelBuilder.Entity("Api.Modules.AccessControl.Persistence.Entities.Authorization.UserAttribute", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -593,29 +733,256 @@ namespace Api.Modules.AccessControl.Persistence.Migrations.Authorization
                     b.ToTable("UserAttributes", "auth");
                 });
 
-            modelBuilder.Entity("AccessControl.Framework.SqlServer.Entities.Authorization.AbacRule", b =>
+            modelBuilder.Entity("Api.Modules.AccessControl.Persistence.Entities.Authorization.UserGroup", b =>
                 {
-                    b.HasOne("AccessControl.Framework.SqlServer.Entities.Authorization.AbacRuleGroup", "RuleGroup")
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTimeOffset>("FirstSeenAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("GroupId")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTimeOffset>("LastSeenAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GroupId");
+
+                    b.HasIndex("LastSeenAt")
+                        .HasDatabaseName("IX_UserGroups_LastSeenAt");
+
+                    b.HasIndex("UserId", "GroupId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_UserGroups_UserId_GroupId");
+
+                    b.ToTable("UserGroups", "auth");
+                });
+
+            modelBuilder.Entity("Api.Modules.AccessControl.Persistence.Entities.Events.BusinessProcessEntity", b =>
+                {
+                    b.Property<string>("BusinessProcessId")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("InitiatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("InitiatedBy")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("Metadata")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Outcome")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("ProcessType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("WorkstreamId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("BusinessProcessId");
+
+                    b.HasIndex("ProcessType", "InitiatedAt")
+                        .HasDatabaseName("IX_BusinessProcesses_Type_Initiated");
+
+                    b.HasIndex("WorkstreamId", "Status")
+                        .HasDatabaseName("IX_BusinessProcesses_Workstream_Status");
+
+                    b.ToTable("BusinessProcesses", "events");
+                });
+
+            modelBuilder.Entity("Api.Modules.AccessControl.Persistence.Entities.Events.StoredBusinessEvent", b =>
+                {
+                    b.Property<Guid>("EventId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ActorDisplayName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ActorId")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("ActorIpAddress")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("ActorType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("AffectedEntities")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BusinessProcessId")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("EventCategory")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("EventData")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("EventVersion")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Justification")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("RecordedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetimeoffset")
+                        .HasDefaultValueSql("SYSDATETIMEOFFSET()");
+
+                    b.Property<string>("RequestCorrelationId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<long>("SequenceNumber")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("SequenceNumber"));
+
+                    b.Property<string>("SessionCorrelationId")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("WorkstreamId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("EventId");
+
+                    b.HasIndex("ActorId")
+                        .HasDatabaseName("IX_BusinessEvents_Actor");
+
+                    b.HasIndex("SequenceNumber")
+                        .IsUnique()
+                        .HasDatabaseName("IX_BusinessEvents_Sequence");
+
+                    b.HasIndex("BusinessProcessId", "SequenceNumber")
+                        .HasDatabaseName("IX_BusinessEvents_Process_Sequence");
+
+                    b.HasIndex("EventType", "OccurredAt")
+                        .HasDatabaseName("IX_BusinessEvents_Type_Occurred");
+
+                    b.HasIndex("WorkstreamId", "EventCategory", "OccurredAt")
+                        .HasDatabaseName("IX_BusinessEvents_Workstream_Category_Occurred");
+
+                    b.ToTable("BusinessEvents", "events");
+                });
+
+            modelBuilder.Entity("Api.Modules.AccessControl.Persistence.Entities.Authorization.AbacRule", b =>
+                {
+                    b.HasOne("Api.Modules.AccessControl.Persistence.Entities.Authorization.AbacRuleGroup", "RuleGroup")
                         .WithMany("Rules")
                         .HasForeignKey("RuleGroupId");
 
                     b.Navigation("RuleGroup");
                 });
 
-            modelBuilder.Entity("AccessControl.Framework.SqlServer.Entities.Authorization.AbacRuleGroup", b =>
+            modelBuilder.Entity("Api.Modules.AccessControl.Persistence.Entities.Authorization.AbacRuleGroup", b =>
                 {
-                    b.HasOne("AccessControl.Framework.SqlServer.Entities.Authorization.AbacRuleGroup", "ParentGroup")
+                    b.HasOne("Api.Modules.AccessControl.Persistence.Entities.Authorization.AbacRuleGroup", "ParentGroup")
                         .WithMany("ChildGroups")
                         .HasForeignKey("ParentGroupId");
 
                     b.Navigation("ParentGroup");
                 });
 
-            modelBuilder.Entity("AccessControl.Framework.SqlServer.Entities.Authorization.AbacRuleGroup", b =>
+            modelBuilder.Entity("Api.Modules.AccessControl.Persistence.Entities.Authorization.UserGroup", b =>
+                {
+                    b.HasOne("Api.Modules.AccessControl.Persistence.Entities.Authorization.Group", "Group")
+                        .WithMany("UserGroups")
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Api.Modules.AccessControl.Persistence.Entities.Authorization.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Group");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Api.Modules.AccessControl.Persistence.Entities.Events.StoredBusinessEvent", b =>
+                {
+                    b.HasOne("Api.Modules.AccessControl.Persistence.Entities.Events.BusinessProcessEntity", "BusinessProcess")
+                        .WithMany()
+                        .HasForeignKey("BusinessProcessId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("BusinessProcess");
+                });
+
+            modelBuilder.Entity("Api.Modules.AccessControl.Persistence.Entities.Authorization.AbacRuleGroup", b =>
                 {
                     b.Navigation("ChildGroups");
 
                     b.Navigation("Rules");
+                });
+
+            modelBuilder.Entity("Api.Modules.AccessControl.Persistence.Entities.Authorization.Group", b =>
+                {
+                    b.Navigation("UserGroups");
                 });
 #pragma warning restore 612, 618
         }

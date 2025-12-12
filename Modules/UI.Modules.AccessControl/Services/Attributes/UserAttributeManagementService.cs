@@ -16,11 +16,11 @@ namespace UI.Modules.AccessControl.Services.Attributes;
 /// </summary>
 public class UserAttributeManagementService(
     IUserAttributeRepository userAttributeRepository,
-    CachedGraphUserService graphUserService,
+    IGraphUserService graphUserService,
     ILogger<UserAttributeManagementService> logger) : IUserAttributeManagementService
 {
     private readonly IUserAttributeRepository _userAttributeRepository = userAttributeRepository;
-    private readonly CachedGraphUserService _graphUserService = graphUserService;
+    private readonly IGraphUserService _graphUserService = graphUserService;
     private readonly ILogger<UserAttributeManagementService> _logger = logger;
 
     /// <inheritdoc />

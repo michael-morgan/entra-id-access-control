@@ -1,0 +1,144 @@
+@model List<UI.Modules.AccessControl.Models.StaleAssociationViewModel>
+
+@{
+    ViewData["Title"] = "Stale Group Associations";
+    var daysThreshold = ViewBag.DaysThreshold ?? 30;
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">Groups</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Stale Associations</li>
+    </ol>
+</nav>
+
+<h1>Stale Group Associations</h1>
+
+<p class="text-muted">
+    User-group associations that haven't been seen in JWT tokens for more than @daysThreshold days.
+    These may indicate users who no longer have access to these groups in Entra ID.
+</p>
+
+<div class="alert alert-info" role="alert">
+    <i class="bi bi-info-circle"></i>
+    <strong>Note:</strong> Stale associations don't affect authorization. JWT tokens are always the source of truth.
+    This view helps identify and clean up outdated data in the database.
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<form method="get" class="mb-3">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="input-group">
+                <label for="daysThreshold" class="input-group-text">Days Threshold</label>
+                <input type="number" name="daysThreshold" id="daysThreshold" class="form-control" value="@daysThreshold" min="1" max="365" />
+                <button class="btn btn-primary" type="submit">
+                    <i class="bi bi-search"></i> Apply
+                </button>
+            </div>
+        </div>
+    </div>
+</form>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-success" role="alert">
+        <i class="bi bi-check-circle"></i>
+        No stale associations found. All user-group associations have been seen in JWT tokens within the last @daysThreshold days.
+    </div>
+}
+else
+{
+    <div class="alert alert-warning" role="alert">
+        <i class="bi bi-exclamation-triangle"></i>
+        Found <strong>@Model.Count</strong> stale association(s) not seen in the last @daysThreshold days.
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Group</th>
+                    <th>First Seen</th>
+                    <th>Last Seen</th>
+                    <th>Days Since Last Seen</th>
+                    <th>Source</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var association in Model)
+                {
+                    <tr class="@(association.DaysSinceLastSeen > 60 ? "table-danger" : association.DaysSinceLastSeen > 30 ? "table-warning" : "")">
+                        <td>
+                            <a asp-controller="Users" asp-action="Details" asp-route-id="@association.UserId">
+                                @association.UserName
+                            </a>
+                        </td>
+                        <td>
+                            <a asp-action="Details" asp-route-id="@association.GroupId">
+                                @association.GroupDisplayName
+                            </a>
+                        </td>
+                        <td>@association.FirstSeenAt.ToString("yyyy-MM-dd")</td>
+                        <td>@association.LastSeenAt.ToString("yyyy-MM-dd")</td>
+                        <td>
+                            <span class="badge bg-warning text-dark">
+                                @association.DaysSinceLastSeen days
+                            </span>
+                        </td>
+                        <td><span class="badge bg-secondary">@association.Source</span></td>
+                        <td>
+                            <form method="post" asp-action="KeepStaleAssociation" style="display: inline;">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@association.Id" />
+                                <input type="hidden" name="daysThreshold" value="@daysThreshold" />
+                                <button type="submit" class="btn btn-sm btn-outline-success" title="Mark as Manual and keep">
+                                    <i class="bi bi-check-circle"></i> Keep
+                                </button>
+                            </form>
+                            <form method="post" asp-action="RemoveStaleAssociation" style="display: inline;" onsubmit="return confirm('Are you sure you want to remove this association?');">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@association.Id" />
+                                <input type="hidden" name="daysThreshold" value="@daysThreshold" />
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove association">
+                                    <i class="bi bi-trash"></i> Remove
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="mt-3">
+        <small class="text-muted">
+            <i class="bi bi-info-circle"></i>
+            <strong>Keep:</strong> Marks the association as "Manual" so it won't appear in stale reports anymore.
+            <strong>Remove:</strong> Deletes the association from the database (does not affect authorization).
+        </small>
+    </div>
+}
+
+<div class="mt-3">
+    <a asp-action="Index" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Groups
+    </a>
+</div>

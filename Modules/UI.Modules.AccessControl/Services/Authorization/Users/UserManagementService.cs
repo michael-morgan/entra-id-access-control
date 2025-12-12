@@ -13,12 +13,12 @@ namespace UI.Modules.AccessControl.Services.Authorization.Users;
 /// Orchestrates Graph API calls, repository calls, and ViewModel mapping.
 /// </summary>
 public class UserManagementService(
-    GraphUserService graphUserService,
+    IGraphUserService graphUserService,
     IUserAttributeRepository userAttributeRepository,
     IPolicyRepository policyRepository,
     ILogger<UserManagementService> logger) : IUserManagementService
 {
-    private readonly GraphUserService _graphUserService = graphUserService;
+    private readonly IGraphUserService _graphUserService = graphUserService;
     private readonly IUserAttributeRepository _userAttributeRepository = userAttributeRepository;
     private readonly IPolicyRepository _policyRepository = policyRepository;
     private readonly ILogger<UserManagementService> _logger = logger;

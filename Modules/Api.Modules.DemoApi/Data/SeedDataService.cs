@@ -48,11 +48,15 @@ public class SeedDataService(AccessControlDbContext context)
 
         await ClearExistingDataAsync();
 
+        await SeedUsersAsync();
+        await SeedGroupsAsync();
+        await SeedUserGroupsAsync();
         await SeedResourcesAsync();
         await SeedRolesAsync();
         await SeedGroupRoleMappingsAsync();
         await SeedPoliciesAsync();
         await SeedUserAttributesAsync();
+        await SeedRoleAttributesAsync();
         await SeedAttributeSchemasAsync();
         await SeedAbacRuleGroupsAsync();
         await SeedAbacRulesAsync();
@@ -67,7 +71,7 @@ public class SeedDataService(AccessControlDbContext context)
 
     private async Task ClearExistingDataAsync()
     {
-        Console.WriteLine("\n[0/8] Clearing existing data...");
+        Console.WriteLine("\n[0/12] Clearing existing data...");
 
         // Delete in correct order to respect foreign key constraints
         // Start with dependent tables first
@@ -81,6 +85,9 @@ public class SeedDataService(AccessControlDbContext context)
         var casbinPoliciesDeleted = await _context.Database.ExecuteSqlRawAsync("DELETE FROM [auth].[CasbinPolicies]");
         var casbinResourcesDeleted = await _context.Database.ExecuteSqlRawAsync("DELETE FROM [auth].[CasbinResources]");
         var casbinRolesDeleted = await _context.Database.ExecuteSqlRawAsync("DELETE FROM [auth].[CasbinRoles]");
+        var userGroupsDeleted = await _context.Database.ExecuteSqlRawAsync("DELETE FROM [auth].[UserGroups]");
+        var groupsDeleted = await _context.Database.ExecuteSqlRawAsync("DELETE FROM [auth].[Groups]");
+        var usersDeleted = await _context.Database.ExecuteSqlRawAsync("DELETE FROM [auth].[Users]");
 
         Console.WriteLine($"  ✓ Deleted {abacRulesDeleted} ABAC rules");
         Console.WriteLine($"  ✓ Deleted {abacRuleGroupsDeleted} ABAC rule groups");
@@ -91,12 +98,214 @@ public class SeedDataService(AccessControlDbContext context)
         Console.WriteLine($"  ✓ Deleted {casbinPoliciesDeleted} Casbin policies");
         Console.WriteLine($"  ✓ Deleted {casbinResourcesDeleted} Casbin resources");
         Console.WriteLine($"  ✓ Deleted {casbinRolesDeleted} Casbin roles");
+        Console.WriteLine($"  ✓ Deleted {userGroupsDeleted} user-group associations");
+        Console.WriteLine($"  ✓ Deleted {groupsDeleted} groups");
+        Console.WriteLine($"  ✓ Deleted {usersDeleted} users");
         Console.WriteLine("  ✓ All existing data cleared");
+    }
+
+    private Task SeedUsersAsync()
+    {
+        Console.WriteLine("\n[1/12] Seeding users (global user records)...");
+
+        var users = new List<User>
+        {
+            new() {
+                UserId = ALICE_ID,
+                Name = "Alice",
+                CreatedAt = DateTimeOffset.UtcNow
+            },
+            new() {
+                UserId = BOB_ID,
+                Name = "Bob",
+                CreatedAt = DateTimeOffset.UtcNow
+            },
+            new() {
+                UserId = CAROL_ID,
+                Name = "Carol",
+                CreatedAt = DateTimeOffset.UtcNow
+            }
+        };
+
+        foreach (var user in users)
+        {
+            _context.Users.Add(user);
+            Console.WriteLine($"  ✓ {user.Name} ({user.UserId})");
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task SeedGroupsAsync()
+    {
+        Console.WriteLine("\n[2/12] Seeding Entra ID groups...");
+
+        var groups = new List<Group>
+        {
+            // Platform Groups
+            new() {
+                GroupId = PLATFORM_ADMINS,
+                DisplayName = "Platform-Admins",
+                Description = "Platform administrators with system-wide access",
+                Source = "Manual",
+                CreatedAt = DateTimeOffset.UtcNow
+            },
+
+            // Loans Groups
+            new() {
+                GroupId = LOANS_OFFICERS,
+                DisplayName = "Loans-Officers",
+                Description = "Loan officers who can create and manage loan applications",
+                Source = "Manual",
+                CreatedAt = DateTimeOffset.UtcNow
+            },
+            new() {
+                GroupId = LOANS_APPROVERS,
+                DisplayName = "Loans-Approvers",
+                Description = "Loan approvers with standard approval limits",
+                Source = "Manual",
+                CreatedAt = DateTimeOffset.UtcNow
+            },
+            new() {
+                GroupId = LOANS_SENIOR_APPROVERS,
+                DisplayName = "Loans-SeniorApprovers",
+                Description = "Senior loan approvers with high approval limits",
+                Source = "Manual",
+                CreatedAt = DateTimeOffset.UtcNow
+            },
+            new() {
+                GroupId = LOANS_DISBURSEMENT,
+                DisplayName = "Loans-Disbursement",
+                Description = "Loan disbursement officers who process approved loans",
+                Source = "Manual",
+                CreatedAt = DateTimeOffset.UtcNow
+            },
+
+            // Claims Groups
+            new() {
+                GroupId = CLAIMS_ADJUDICATORS,
+                DisplayName = "Claims-Adjudicators",
+                Description = "Claims adjudicators who assess insurance claims",
+                Source = "Manual",
+                CreatedAt = DateTimeOffset.UtcNow
+            },
+            new() {
+                GroupId = CLAIMS_SENIOR_ADJUDICATORS,
+                DisplayName = "Claims-SeniorAdjudicators",
+                Description = "Senior claims adjudicators for high-value claims",
+                Source = "Manual",
+                CreatedAt = DateTimeOffset.UtcNow
+            },
+            new() {
+                GroupId = CLAIMS_PAYMENT_PROCESSORS,
+                DisplayName = "Claims-PaymentProcessors",
+                Description = "Payment processors who issue claim payments",
+                Source = "Manual",
+                CreatedAt = DateTimeOffset.UtcNow
+            },
+
+            // Documents Groups
+            new() {
+                GroupId = DOCUMENTS_VIEWERS,
+                DisplayName = "Documents-Viewers",
+                Description = "Document viewers with read-only access",
+                Source = "Manual",
+                CreatedAt = DateTimeOffset.UtcNow
+            },
+            new() {
+                GroupId = DOCUMENTS_UPLOADERS,
+                DisplayName = "Documents-Uploaders",
+                Description = "Document uploaders who can add new documents",
+                Source = "Manual",
+                CreatedAt = DateTimeOffset.UtcNow
+            },
+            new() {
+                GroupId = DOCUMENTS_MANAGERS,
+                DisplayName = "Documents-Managers",
+                Description = "Document managers with full management permissions",
+                Source = "Manual",
+                CreatedAt = DateTimeOffset.UtcNow
+            }
+        };
+
+        foreach (var group in groups)
+        {
+            _context.Groups.Add(group);
+            Console.WriteLine($"  ✓ {group.DisplayName} ({group.GroupId[..8]}...)");
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task SeedUserGroupsAsync()
+    {
+        Console.WriteLine("\n[3/12] Seeding user-group associations...");
+
+        var userGroups = new List<UserGroup>
+        {
+            // Alice's Groups (Loans)
+            new() {
+                UserId = ALICE_ID,
+                GroupId = LOANS_OFFICERS,
+                Source = "Manual",
+                FirstSeenAt = DateTimeOffset.UtcNow,
+                LastSeenAt = DateTimeOffset.UtcNow
+            },
+            new() {
+                UserId = ALICE_ID,
+                GroupId = LOANS_SENIOR_APPROVERS,
+                Source = "Manual",
+                FirstSeenAt = DateTimeOffset.UtcNow,
+                LastSeenAt = DateTimeOffset.UtcNow
+            },
+
+            // Bob's Groups (Loans + Claims)
+            new() {
+                UserId = BOB_ID,
+                GroupId = LOANS_APPROVERS,
+                Source = "Manual",
+                FirstSeenAt = DateTimeOffset.UtcNow,
+                LastSeenAt = DateTimeOffset.UtcNow
+            },
+            new() {
+                UserId = BOB_ID,
+                GroupId = CLAIMS_ADJUDICATORS,
+                Source = "Manual",
+                FirstSeenAt = DateTimeOffset.UtcNow,
+                LastSeenAt = DateTimeOffset.UtcNow
+            },
+
+            // Carol's Groups (Loans + Documents)
+            new() {
+                UserId = CAROL_ID,
+                GroupId = LOANS_OFFICERS,
+                Source = "Manual",
+                FirstSeenAt = DateTimeOffset.UtcNow,
+                LastSeenAt = DateTimeOffset.UtcNow
+            },
+            new() {
+                UserId = CAROL_ID,
+                GroupId = DOCUMENTS_VIEWERS,
+                Source = "Manual",
+                FirstSeenAt = DateTimeOffset.UtcNow,
+                LastSeenAt = DateTimeOffset.UtcNow
+            }
+        };
+
+        foreach (var userGroup in userGroups)
+        {
+            _context.UserGroups.Add(userGroup);
+            var userName = userGroup.UserId == ALICE_ID ? "Alice" : userGroup.UserId == BOB_ID ? "Bob" : "Carol";
+            var group = _context.Groups.Local.FirstOrDefault(g => g.GroupId == userGroup.GroupId);
+            Console.WriteLine($"  ✓ {userName} → {group?.DisplayName ?? userGroup.GroupId[..8] + "..."}");
+        }
+
+        return Task.CompletedTask;
     }
 
     private Task SeedResourcesAsync()
     {
-        Console.WriteLine("\n[1/9] Seeding resource definitions...");
+        Console.WriteLine("\n[4/12] Seeding resource definitions...");
 
         var resources = new[]
         {
@@ -333,7 +542,7 @@ public class SeedDataService(AccessControlDbContext context)
 
     private Task SeedRolesAsync()
     {
-        Console.WriteLine("\n[2/9] Seeding application roles...");
+        Console.WriteLine("\n[5/12] Seeding application roles...");
 
         var roles = new[]
         {
@@ -425,7 +634,7 @@ public class SeedDataService(AccessControlDbContext context)
 
     private Task SeedGroupRoleMappingsAsync()
     {
-        Console.WriteLine("\n[2/8] Mapping Entra ID groups to application roles...");
+        Console.WriteLine("\n[6/12] Mapping Entra ID groups to application roles...");
 
         var groupMappings = new[]
         {
@@ -470,7 +679,7 @@ public class SeedDataService(AccessControlDbContext context)
 
     private Task SeedPoliciesAsync()
     {
-        Console.WriteLine("\n[3/8] Seeding authorization policies...");
+        Console.WriteLine("\n[7/12] Seeding authorization policies...");
 
         var policies = new List<CasbinPolicy>();
 
@@ -545,9 +754,9 @@ public class SeedDataService(AccessControlDbContext context)
 
     private Task SeedUserAttributesAsync()
     {
-        Console.WriteLine("\n[4/8] Seeding user attributes (workstream-scoped dynamic attributes)...");
+        Console.WriteLine("\n[8/12] Seeding user attributes (workstream-scoped + global attributes)...");
 
-        // Helper to create attributes JSON
+        // Helper to create attributes JSON for workstream-scoped attributes
         static string createAttrs(string dept, string region, decimal approvalLimit, int mgmtLevel, string? costCenter = null)
         {
             var attrs = new Dictionary<string, object>
@@ -561,8 +770,41 @@ public class SeedDataService(AccessControlDbContext context)
             return System.Text.Json.JsonSerializer.Serialize(attrs);
         }
 
+        // Helper to create global attributes JSON (JobTitle and Department)
+        static string createGlobalAttrs(string jobTitle, string department)
+        {
+            var attrs = new Dictionary<string, object>
+            {
+                { "JobTitle", jobTitle },
+                { "Department", department }
+            };
+            return System.Text.Json.JsonSerializer.Serialize(attrs);
+        }
+
         var userAttributes = new List<UserAttribute>
         {
+            // ═══════════════════════════════════════════════════════════════════════════
+            // GLOBAL ATTRIBUTES (Not workstream-scoped, used for display across all workstreams)
+            // ═══════════════════════════════════════════════════════════════════════════
+            new() {
+                UserId = ALICE_ID,
+                WorkstreamId = "global",
+                AttributesJson = createGlobalAttrs("Senior Loan Officer", "Lending"),
+                CreatedAt = DateTimeOffset.UtcNow
+            },
+            new() {
+                UserId = BOB_ID,
+                WorkstreamId = "global",
+                AttributesJson = createGlobalAttrs("Loan Approver", "Lending"),
+                CreatedAt = DateTimeOffset.UtcNow
+            },
+            new() {
+                UserId = CAROL_ID,
+                WorkstreamId = "global",
+                AttributesJson = createGlobalAttrs("Junior Loan Officer", "Lending"),
+                CreatedAt = DateTimeOffset.UtcNow
+            },
+
             // ═══════════════════════════════════════════════════════════════════════════
             // ALICE - Senior Loan Officer in US-WEST with high approval limit
             // ═══════════════════════════════════════════════════════════════════════════
@@ -616,13 +858,147 @@ public class SeedDataService(AccessControlDbContext context)
         return Task.CompletedTask;
     }
 
+    private Task SeedRoleAttributesAsync()
+    {
+        Console.WriteLine("\n[9/12] Seeding role attributes (global role attributes for fallback)...");
+
+        // Helper to create global role attributes JSON (JobTitle and Department)
+        static string createGlobalRoleAttrs(string jobTitle, string department)
+        {
+            var attrs = new Dictionary<string, object>
+            {
+                { "JobTitle", jobTitle },
+                { "Department", department }
+            };
+            return System.Text.Json.JsonSerializer.Serialize(attrs);
+        }
+
+        var roleAttributes = new List<RoleAttribute>
+        {
+            // ═══════════════════════════════════════════════════════════════════════════
+            // GLOBAL ROLE ATTRIBUTES (Fallback when user-specific attributes not available)
+            // These are used when a user doesn't have explicit JobTitle/Department attributes
+            // ═══════════════════════════════════════════════════════════════════════════
+            new() {
+                AppRoleId = "loans-officer-role",
+                RoleValue = "Loans.Officer",
+                WorkstreamId = "global",
+                RoleDisplayName = "Loan Officer",
+                IsActive = true,
+                AttributesJson = createGlobalRoleAttrs("Loan Officer", "Lending"),
+                CreatedAt = DateTimeOffset.UtcNow
+            },
+            new() {
+                AppRoleId = "loans-approver-role",
+                RoleValue = "Loans.Approver",
+                WorkstreamId = "global",
+                RoleDisplayName = "Loan Approver",
+                IsActive = true,
+                AttributesJson = createGlobalRoleAttrs("Loan Approver", "Lending"),
+                CreatedAt = DateTimeOffset.UtcNow
+            },
+            new() {
+                AppRoleId = "loans-senior-approver-role",
+                RoleValue = "Loans.SeniorApprover",
+                WorkstreamId = "global",
+                RoleDisplayName = "Senior Loan Approver",
+                IsActive = true,
+                AttributesJson = createGlobalRoleAttrs("Senior Loan Approver", "Lending"),
+                CreatedAt = DateTimeOffset.UtcNow
+            },
+            new() {
+                AppRoleId = "claims-adjudicator-role",
+                RoleValue = "Claims.Adjudicator",
+                WorkstreamId = "global",
+                RoleDisplayName = "Claims Adjudicator",
+                IsActive = true,
+                AttributesJson = createGlobalRoleAttrs("Claims Adjudicator", "Claims"),
+                CreatedAt = DateTimeOffset.UtcNow
+            },
+            new() {
+                AppRoleId = "documents-viewer-role",
+                RoleValue = "Documents.Viewer",
+                WorkstreamId = "global",
+                RoleDisplayName = "Documents Viewer",
+                IsActive = true,
+                AttributesJson = createGlobalRoleAttrs("Documents Viewer", "Documents"),
+                CreatedAt = DateTimeOffset.UtcNow
+            }
+        };
+
+        foreach (var attr in roleAttributes)
+        {
+            _context.RoleAttributes.Add(attr);
+            Console.WriteLine($"  ✓ {attr.RoleValue} → {attr.WorkstreamId} workstream");
+        }
+
+        return Task.CompletedTask;
+    }
+
     private Task SeedAttributeSchemasAsync()
     {
-        Console.WriteLine("\n[5/8] Seeding attribute schemas (defines what attributes each workstream uses)...");
+        Console.WriteLine("\n[10/12] Seeding attribute schemas (defines what attributes each workstream uses)...");
 
         var schemas = new[]
         {
-            // Loans workstream schema
+            // ═══════════════════════════════════════════════════════════════════════════
+            // GLOBAL WORKSTREAM SCHEMAS (shared across all workstreams)
+            // ═══════════════════════════════════════════════════════════════════════════
+
+            // Global User Attributes
+            new AttributeSchema
+            {
+                WorkstreamId = "global",
+                AttributeLevel = "User",
+                AttributeName = "JobTitle",
+                AttributeDisplayName = "Job Title",
+                DataType = "String",
+                IsRequired = false,
+                Description = "User's job title for display purposes",
+                DisplayOrder = 1
+            },
+            new AttributeSchema
+            {
+                WorkstreamId = "global",
+                AttributeLevel = "User",
+                AttributeName = "Department",
+                AttributeDisplayName = "Department",
+                DataType = "String",
+                IsRequired = false,
+                Description = "User's primary department",
+                ValidationRules = "{\"allowedValues\": [\"Lending\",\"Claims\",\"Documents\",\"Legal\",\"HR\",\"Finance\",\"IT\"]}",
+                DisplayOrder = 2
+            },
+
+            // Global Role Attributes
+            new AttributeSchema
+            {
+                WorkstreamId = "global",
+                AttributeLevel = "Role",
+                AttributeName = "JobTitle",
+                AttributeDisplayName = "Role Job Title",
+                DataType = "String",
+                IsRequired = false,
+                Description = "Default job title for users with this role",
+                DisplayOrder = 1
+            },
+            new AttributeSchema
+            {
+                WorkstreamId = "global",
+                AttributeLevel = "Role",
+                AttributeName = "Department",
+                AttributeDisplayName = "Role Department",
+                DataType = "String",
+                IsRequired = false,
+                Description = "Department associated with this role",
+                ValidationRules = "{\"allowedValues\": [\"Lending\",\"Claims\",\"Documents\",\"Legal\",\"HR\",\"Finance\",\"IT\"]}",
+                DisplayOrder = 2
+            },
+
+            // ═══════════════════════════════════════════════════════════════════════════
+            // LOANS WORKSTREAM SCHEMAS
+            // ═══════════════════════════════════════════════════════════════════════════
+
             new AttributeSchema
             {
                 WorkstreamId = "loans",
@@ -659,8 +1035,34 @@ public class SeedDataService(AccessControlDbContext context)
                 ValidationRules = "{\"allowedValues\": [\"Lending\",\"Underwriting\",\"IT\"]}",
                 DisplayOrder = 3
             },
+            new AttributeSchema
+            {
+                WorkstreamId = "loans",
+                AttributeLevel = "User",
+                AttributeName = "ManagementLevel",
+                AttributeDisplayName = "Management Level",
+                DataType = "Number",
+                IsRequired = false,
+                Description = "Management level (1-5) for hierarchical approval workflows",
+                ValidationRules = "{\"min\": 1, \"max\": 5}",
+                DisplayOrder = 4
+            },
+            new AttributeSchema
+            {
+                WorkstreamId = "loans",
+                AttributeLevel = "User",
+                AttributeName = "CostCenter",
+                AttributeDisplayName = "Cost Center Code",
+                DataType = "String",
+                IsRequired = false,
+                Description = "Cost center for financial tracking",
+                ValidationRules = "{\"pattern\": \"^CC-[A-Z]+-\\\\d{3}$\"}",
+                DisplayOrder = 5
+            },
 
-            // Claims workstream schema
+            // ═══════════════════════════════════════════════════════════════════════════
+            // CLAIMS WORKSTREAM SCHEMAS
+            // ═══════════════════════════════════════════════════════════════════════════
             new AttributeSchema
             {
                 WorkstreamId = "claims",
@@ -684,8 +1086,46 @@ public class SeedDataService(AccessControlDbContext context)
                 ValidationRules = "{\"min\": 1, \"max\": 5}",
                 DisplayOrder = 2
             },
+            new AttributeSchema
+            {
+                WorkstreamId = "claims",
+                AttributeLevel = "User",
+                AttributeName = "Department",
+                AttributeDisplayName = "Department Name",
+                DataType = "String",
+                IsRequired = false,
+                Description = "User's department",
+                ValidationRules = "{\"allowedValues\": [\"Claims\",\"Legal\",\"Finance\"]}",
+                DisplayOrder = 3
+            },
+            new AttributeSchema
+            {
+                WorkstreamId = "claims",
+                AttributeLevel = "User",
+                AttributeName = "ApprovalLimit",
+                AttributeDisplayName = "Maximum Claim Approval Limit",
+                DataType = "Number",
+                IsRequired = false,
+                Description = "Maximum claim amount user can approve",
+                ValidationRules = "{\"min\": 0, \"max\": 1000000}",
+                DisplayOrder = 4
+            },
+            new AttributeSchema
+            {
+                WorkstreamId = "claims",
+                AttributeLevel = "User",
+                AttributeName = "CostCenter",
+                AttributeDisplayName = "Cost Center Code",
+                DataType = "String",
+                IsRequired = false,
+                Description = "Cost center for financial tracking",
+                ValidationRules = "{\"pattern\": \"^CC-[A-Z]+-\\\\d{3}$\"}",
+                DisplayOrder = 5
+            },
 
-            // Documents workstream schema
+            // ═══════════════════════════════════════════════════════════════════════════
+            // DOCUMENTS WORKSTREAM SCHEMAS
+            // ═══════════════════════════════════════════════════════════════════════════
             new AttributeSchema
             {
                 WorkstreamId = "documents",
@@ -697,19 +1137,67 @@ public class SeedDataService(AccessControlDbContext context)
                 Description = "Department for document access control",
                 ValidationRules = "{\"allowedValues\": [\"Legal\",\"HR\",\"Finance\",\"IT\"]}",
                 DisplayOrder = 1
+            },
+            new AttributeSchema
+            {
+                WorkstreamId = "documents",
+                AttributeLevel = "User",
+                AttributeName = "Region",
+                AttributeDisplayName = "Geographic Region",
+                DataType = "String",
+                IsRequired = false,
+                Description = "Geographic region for regional access control",
+                ValidationRules = "{\"allowedValues\": [\"US-WEST\",\"US-EAST\",\"US-CENTRAL\",\"ALL\"]}",
+                DisplayOrder = 2
+            },
+            new AttributeSchema
+            {
+                WorkstreamId = "documents",
+                AttributeLevel = "User",
+                AttributeName = "ApprovalLimit",
+                AttributeDisplayName = "Approval Limit",
+                DataType = "Number",
+                IsRequired = false,
+                Description = "Approval limit for document-related actions",
+                ValidationRules = "{\"min\": 0}",
+                DisplayOrder = 3
+            },
+            new AttributeSchema
+            {
+                WorkstreamId = "documents",
+                AttributeLevel = "User",
+                AttributeName = "ManagementLevel",
+                AttributeDisplayName = "Management Level",
+                DataType = "Number",
+                IsRequired = false,
+                Description = "Management level (1-5)",
+                ValidationRules = "{\"min\": 1, \"max\": 5}",
+                DisplayOrder = 4
+            },
+            new AttributeSchema
+            {
+                WorkstreamId = "documents",
+                AttributeLevel = "User",
+                AttributeName = "CostCenter",
+                AttributeDisplayName = "Cost Center Code",
+                DataType = "String",
+                IsRequired = false,
+                Description = "Cost center for financial tracking",
+                ValidationRules = "{\"pattern\": \"^CC-[A-Z]+-\\\\d{3}$\"}",
+                DisplayOrder = 5
             }
         };
 
         _context.AttributeSchemas.AddRange(schemas);
 
-        Console.WriteLine($"  ✓ Defined attribute schemas for 3 workstreams");
+        Console.WriteLine($"  ✓ Defined attribute schemas for global + 3 workstreams (User and Role levels)");
 
         return Task.CompletedTask;
     }
 
     private async Task SeedAbacRuleGroupsAsync()
     {
-        Console.WriteLine("\n[6/8] Seeding ABAC rule groups (hierarchical rule organization)...");
+        Console.WriteLine("\n[11/12] Seeding ABAC rule groups (hierarchical rule organization)...");
 
         var ruleGroups = new[]
         {
@@ -786,7 +1274,7 @@ public class SeedDataService(AccessControlDbContext context)
 
     private Task SeedAbacRulesAsync()
     {
-        Console.WriteLine("\n[7/8] Seeding declarative ABAC rules...");
+        Console.WriteLine("\n[12/12] Seeding declarative ABAC rules...");
 
         // Get the rule group IDs that were just created
         var loanReadGroup = _context.AbacRuleGroups.First(g => g.GroupName == "LoanReadAccessChecks");
@@ -888,7 +1376,7 @@ public class SeedDataService(AccessControlDbContext context)
 
     private static Task SeedSampleDataAsync()
     {
-        Console.WriteLine("\n[8/8] Seeding sample resource data for POC scenarios...");
+        Console.WriteLine("\n[13/12] Displaying POC scenarios (no additional seeding)...");
 
         // NOTE: This would normally seed actual Loan, Claim, Document entities
         // For now, we're just documenting the scenarios here.

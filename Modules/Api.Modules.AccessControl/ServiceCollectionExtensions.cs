@@ -52,12 +52,22 @@ public static class ServiceCollectionExtensions
         services.AddScoped<Persistence.Repositories.Authorization.IPolicyRepository, Persistence.Repositories.Authorization.PolicyRepository>();
         services.AddScoped<Persistence.Repositories.Authorization.IRoleRepository, Persistence.Repositories.Authorization.RoleRepository>();
         services.AddScoped<Persistence.Repositories.Authorization.IResourceRepository, Persistence.Repositories.Authorization.ResourceRepository>();
+        services.AddScoped<Persistence.Repositories.Authorization.IUserRepository, Persistence.Repositories.Authorization.UserRepository>();
+        services.AddScoped<Persistence.Repositories.Authorization.IGroupRepository, Persistence.Repositories.Authorization.GroupRepository>();
+        services.AddScoped<Persistence.Repositories.Authorization.IUserGroupRepository, Persistence.Repositories.Authorization.UserGroupRepository>();
         services.AddScoped<Persistence.Repositories.Attributes.IGroupAttributeRepository, Persistence.Repositories.Attributes.GroupAttributeRepository>();
         services.AddScoped<Persistence.Repositories.Attributes.IUserAttributeRepository, Persistence.Repositories.Attributes.UserAttributeRepository>();
         services.AddScoped<Persistence.Repositories.AbacRules.IAbacRuleGroupRepository, Persistence.Repositories.AbacRules.AbacRuleGroupRepository>();
         services.AddScoped<Persistence.Repositories.AbacRules.IAbacRuleRepository, Persistence.Repositories.AbacRules.AbacRuleRepository>();
         services.AddScoped<Persistence.Repositories.Authorization.IAttributeSchemaRepository, Persistence.Repositories.Authorization.AttributeSchemaRepository>();
         services.AddScoped<Persistence.Repositories.Attributes.IRoleAttributeRepository, Persistence.Repositories.Attributes.RoleAttributeRepository>();
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // JWT GROUP SYNC SERVICE
+        // ═══════════════════════════════════════════════════════════════════════
+        services.Configure<Configuration.GroupSyncOptions>(
+            configuration.GetSection(Configuration.GroupSyncOptions.SectionName));
+        services.AddScoped<Services.IJwtGroupSyncService, Services.JwtGroupSyncService>();
 
         // ═══════════════════════════════════════════════════════════════════════
         // AUTHORIZATION
@@ -272,6 +282,27 @@ public static class ApplicationBuilderExtensions
         // Correlation middleware enriches logging and provides context
         app.UseMiddleware<CorrelationMiddleware>();
 
+        return app;
+    }
+
+    /// <summary>
+    /// Uses the JWT group synchronization middleware.
+    /// Extracts group memberships from JWT tokens and persists to database for UI display.
+    /// Call this AFTER UseAuthentication() and BEFORE UseAuthorization().
+    /// </summary>
+    /// <remarks>
+    /// This middleware is optional. If not used, groups won't be available in the admin UI,
+    /// but authorization will still work (JWT is the source of truth for authorization).
+    ///
+    /// Usage in API modules:
+    /// app.UseAuthentication();
+    /// app.UseGroupSync(); // <-- Add here
+    /// app.UseAccessControlFramework();
+    /// app.UseAuthorization();
+    /// </remarks>
+    public static IApplicationBuilder UseGroupSync(this IApplicationBuilder app)
+    {
+        app.UseMiddleware<Middleware.GroupSyncMiddleware>();
         return app;
     }
 }
