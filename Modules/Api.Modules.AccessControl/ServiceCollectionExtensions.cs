@@ -154,6 +154,13 @@ public static class ServiceCollectionExtensions
         // ═══════════════════════════════════════════════════════════════════════
         services.AddHttpContextAccessor();
 
+        // ═══════════════════════════════════════════════════════════════════════
+        // API CONTROLLERS
+        // ═══════════════════════════════════════════════════════════════════════
+        // Register controllers from this module for external integration
+        services.AddControllers()
+            .AddApplicationPart(typeof(ServiceCollectionExtensions).Assembly);
+
         return services;
     }
 
@@ -185,9 +192,7 @@ public static class ServiceCollectionExtensions
             .AddJwtBearer(options =>
             {
                 var authority = configuration["EntraId:Authority"];
-                var audience = configuration["EntraId:Audience"];
                 var tenantId = configuration["EntraId:TenantId"];
-                var clientId = configuration["EntraId:ClientId"];
 
                 if (string.IsNullOrWhiteSpace(authority))
                     throw new InvalidOperationException("EntraId:Authority is required");
@@ -195,17 +200,17 @@ public static class ServiceCollectionExtensions
                 if (string.IsNullOrWhiteSpace(tenantId))
                     throw new InvalidOperationException("EntraId:TenantId is required");
 
-                if (string.IsNullOrWhiteSpace(clientId))
-                    throw new InvalidOperationException("EntraId:ClientId is required");
+                // Note: ClientId is NOT required for JWT Bearer authentication (API-only scenario)
+                // It's only needed if you enable Graph API feature (for Client Credentials flow)
+                // For JWT validation, we only validate the Tenant ID (issuer) - Audience is disabled
 
                 options.Authority = authority.Replace("{tenantId}", tenantId);
-                options.Audience = audience?.Replace("{clientId}", clientId) ?? $"api://{clientId}";
                 options.RequireHttpsMetadata = true;
 
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
-                    ValidateAudience = true,
+                    ValidateAudience = false, // Audience validation disabled - only validate Tenant ID
                     ValidateLifetime = true, // Enabled for security - validates token expiration
                     ValidateIssuerSigningKey = true,
                     ClockSkew = TimeSpan.FromMinutes(5), // Allow 5 minutes clock skew for distributed systems

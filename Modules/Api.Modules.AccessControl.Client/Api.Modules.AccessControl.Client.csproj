@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+
+    <!-- NuGet Package Metadata -->
+    <PackageId>AccessControl.Client</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Access Control Team</Authors>
+    <Company>Your Company</Company>
+    <Description>Client SDK for integrating with the AccessControl framework from external ASP.NET Core applications. Provides HTTP client, Redis caching, Tag Helpers, and Policy Providers for declarative authorization.</Description>
+    <PackageTags>authorization;access-control;rbac;abac;entra-id;azure-ad;security;redis;tag-helpers</PackageTags>
+    <RepositoryUrl>https://gitlab.com/your-org/entra-id-access-control</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <IsPackable>true</IsPackable>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- ASP.NET Core dependencies -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+
+    <!-- HTTP Client -->
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="8.0.0" />
+
+    <!-- Redis Caching -->
+    <PackageReference Include="StackExchange.Redis" Version="2.7.10" />
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="8.0.0" />
+
+    <!-- Options Pattern -->
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
+  </ItemGroup>
+
+</Project>

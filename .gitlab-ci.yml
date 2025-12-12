@@ -1,0 +1,95 @@
+stages:
+  - build
+  - pack
+  - publish
+
+variables:
+  # Use .NET 8 SDK
+  DOTNET_VERSION: "8.0"
+  # Disable telemetry
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  # Disable logo
+  DOTNET_NOLOGO: "1"
+  # NuGet package output directory
+  NUGET_PACKAGES_DIRECTORY: "$CI_PROJECT_DIR/.nuget"
+
+# Default image for .NET builds
+image: mcr.microsoft.com/dotnet/sdk:8.0
+
+# Cache NuGet packages between pipeline runs
+cache:
+  key: "${CI_COMMIT_REF_SLUG}"
+  paths:
+    - .nuget/
+  policy: pull-push
+  # Don't fail if cache doesn't exist
+  when: on_success
+
+# ═══════════════════════════════════════════════════════════════════════
+# BUILD STAGE - Build Client SDK only (framework is internal to monolith)
+# ═══════════════════════════════════════════════════════════════════════
+
+build:client-sdk:
+  stage: build
+  script:
+    - echo "Building Api.Modules.AccessControl.Client SDK..."
+    - dotnet restore Modules/Api.Modules.AccessControl.Client/Api.Modules.AccessControl.Client.csproj
+    - dotnet build Modules/Api.Modules.AccessControl.Client/Api.Modules.AccessControl.Client.csproj --configuration Release --no-restore
+  artifacts:
+    paths:
+      - Modules/Api.Modules.AccessControl.Client/bin/Release/
+      - Modules/Api.Modules.AccessControl.Client/obj/
+    expire_in: 1 hour
+
+# ═══════════════════════════════════════════════════════════════════════
+# PACK STAGE - Create NuGet package for Client SDK only
+# ═══════════════════════════════════════════════════════════════════════
+
+pack:client-sdk:
+  stage: pack
+  dependencies:
+    - build:client-sdk
+  only:
+    - tags  # Only run on git tags (e.g., v1.0.0)
+  script:
+    - echo "Packing AccessControl Client SDK as NuGet package..."
+    - export PACKAGE_VERSION=${CI_COMMIT_TAG#v}
+    - echo "Package version:$PACKAGE_VERSION"
+    - dotnet restore Modules/Api.Modules.AccessControl.Client/Api.Modules.AccessControl.Client.csproj
+    - >
+      dotnet pack Modules/Api.Modules.AccessControl.Client/Api.Modules.AccessControl.Client.csproj
+      --configuration Release
+      --no-build
+      --output $NUGET_PACKAGES_DIRECTORY
+      -p:PackageVersion=$PACKAGE_VERSION
+      -p:IncludeSymbols=true
+      -p:SymbolPackageFormat=snupkg
+  artifacts:
+    paths:
+      - $NUGET_PACKAGES_DIRECTORY/*.nupkg
+      - $NUGET_PACKAGES_DIRECTORY/*.snupkg
+    expire_in: 30 days
+
+# ═══════════════════════════════════════════════════════════════════════
+# PUBLISH STAGE - Publish to GitLab Package Registry
+# ═══════════════════════════════════════════════════════════════════════
+
+publish:gitlab-registry:
+  stage: publish
+  dependencies:
+    - pack:client-sdk
+  only:
+    - tags  # Only publish on git tags
+  script:
+    - echo "Publishing AccessControl.Client SDK to GitLab Package Registry..."
+    - |
+      for package in $NUGET_PACKAGES_DIRECTORY/*.nupkg; do
+        echo "Publishing $package..."
+        dotnet nuget push "$package" \
+          --source "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/nuget/index.json" \
+          --api-key ${CI_JOB_TOKEN}
+      done
+    - echo "NuGet package published successfully!"
+  environment:
+    name: nuget-registry
+    url: $CI_PROJECT_URL/-/packages

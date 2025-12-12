@@ -384,14 +384,12 @@ See [Tests/README.md](Tests/README.md) for detailed test documentation.
 
 ### appsettings.json Structure
 
+**API Module (JWT Bearer):**
 ```json
 {
   "EntraId": {
     "Authority": "https://login.microsoftonline.com/{tenantId}/v2.0",
-    "Audience": "api://{clientId}",
-    "TenantId": "(from user secrets)",
-    "ClientId": "(from user secrets)",
-    "ClientSecret": "(from user secrets)"
+    "TenantId": "(from user secrets)"
   },
   "AccessControl": {
     "Correlation": {
@@ -406,6 +404,23 @@ See [Tests/README.md](Tests/README.md) for detailed test documentation.
       "BusinessHoursEnd": 18,
       "InternalNetworkRanges": ["10.", "192.168.", "172.16."]
     }
+  },
+  "ConnectionStrings": {
+    "AccessControlDb": "(from user secrets)"
+  }
+}
+```
+
+**UI Module (Microsoft.Identity.Web SSO):**
+```json
+{
+  "EntraId": {
+    "Instance": "https://login.microsoftonline.com/",
+    "TenantId": "(from user secrets)",
+    "ClientId": "(from user secrets)",  // Required for OIDC/SSO
+    "ClientSecret": "(from user secrets)",  // Required for Graph API calls
+    "CallbackPath": "/signin-oidc",
+    "SignedOutCallbackPath": "/signout-callback-oidc"
   },
   "ConnectionStrings": {
     "AccessControlDb": "(from user secrets)"
