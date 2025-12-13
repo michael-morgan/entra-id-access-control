@@ -3,6 +3,7 @@ using Api.Modules.AccessControl.Client.Caching;
 using Api.Modules.AccessControl.Client.Configuration;
 using Api.Modules.AccessControl.Client.Http;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Polly;
@@ -46,21 +47,39 @@ public static class ServiceCollectionExtensions
                 $"AccessControl:Client:ApiBaseUrl is required");
         }
 
-        // Register HttpContextAccessor (required for JWT forwarding)
+        // Register HttpContextAccessor
         services.AddHttpContextAccessor();
 
-        // Register HTTP client with Polly retry policy
-        services.AddHttpClient<AccessControlClient>(client =>
+        // Register HTTP client with Polly retry policy and token handler
+        services.AddHttpClient<AccessControlClient>((sp, client) =>
         {
-            client.BaseAddress = new Uri(options.ApiBaseUrl);
-            client.Timeout = TimeSpan.FromSeconds(options.RequestTimeoutSeconds);
+            // Resolve options from DI instead of capturing from closure
+            var opts = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<AccessControlClientOptions>>();
+
+            client.BaseAddress = new Uri(opts.Value.ApiBaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(opts.Value.RequestTimeoutSeconds);
+        })
+        .AddHttpMessageHandler(sp =>
+        {
+            var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
+            var logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<AccessControlTokenHandler>>();
+            var tokenProvider = sp.GetService<IAccessTokenProvider>(); // Optional
+
+            return new AccessControlTokenHandler(httpContextAccessor, logger, tokenProvider);
         })
         .AddPolicyHandler(GetRetryPolicy(options));
 
         // Register client without caching
         if (!options.EnableCaching)
         {
-            services.AddScoped<IAccessControlClient, AccessControlClient>();
+            // AddHttpClient<AccessControlClient> already registered it as Transient
+            // We just need to register the interface mapping
+            services.AddScoped<IAccessControlClient>(sp => sp.GetRequiredService<AccessControlClient>());
+
+            // Register authorization components
+            services.AddSingleton<IAuthorizationPolicyProvider, AccessControlPolicyProvider>();
+            services.AddScoped<IAuthorizationHandler, ResourceAuthorizationHandler>();
+
             return services;
         }
 

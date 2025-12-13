@@ -191,11 +191,7 @@ public static class ServiceCollectionExtensions
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
-                var authority = configuration["EntraId:Authority"];
                 var tenantId = configuration["EntraId:TenantId"];
-
-                if (string.IsNullOrWhiteSpace(authority))
-                    throw new InvalidOperationException("EntraId:Authority is required");
 
                 if (string.IsNullOrWhiteSpace(tenantId))
                     throw new InvalidOperationException("EntraId:TenantId is required");
@@ -204,7 +200,6 @@ public static class ServiceCollectionExtensions
                 // It's only needed if you enable Graph API feature (for Client Credentials flow)
                 // For JWT validation, we only validate the Tenant ID (issuer) - Audience is disabled
 
-                options.Authority = authority.Replace("{tenantId}", tenantId);
                 options.RequireHttpsMetadata = true;
 
                 options.TokenValidationParameters = new TokenValidationParameters

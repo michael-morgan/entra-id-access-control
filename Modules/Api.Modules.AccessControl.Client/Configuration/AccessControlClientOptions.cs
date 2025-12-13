@@ -47,12 +47,6 @@ public class AccessControlClientOptions
     public int RequestTimeoutSeconds { get; set; } = 30;
 
     /// <summary>
-    /// Whether to forward the user's JWT token to the API.
-    /// Default: true (required for authorization checks)
-    /// </summary>
-    public bool ForwardJwtToken { get; set; } = true;
-
-    /// <summary>
     /// Number of retry attempts for transient failures.
     /// Default: 3
     /// </summary>

@@ -1,9 +1,6 @@
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text.Json;
 using Api.Modules.AccessControl.Client.Configuration;
 using Api.Modules.AccessControl.Client.Models;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -11,34 +8,22 @@ namespace Api.Modules.AccessControl.Client.Http;
 
 /// <summary>
 /// HTTP client for calling the AccessControl authorization API.
-/// Handles JWT forwarding, error handling, and retry logic.
+/// JWT token handling is managed by AccessControlTokenHandler.
 /// </summary>
 public class AccessControlClient : IAccessControlClient
 {
     private readonly HttpClient _httpClient;
-    private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly AccessControlClientOptions _options;
     private readonly ILogger<AccessControlClient> _logger;
 
     public AccessControlClient(
         HttpClient httpClient,
-        IHttpContextAccessor httpContextAccessor,
         IOptions<AccessControlClientOptions> options,
         ILogger<AccessControlClient> logger)
     {
         _httpClient = httpClient;
-        _httpContextAccessor = httpContextAccessor;
         _options = options.Value;
         _logger = logger;
-
-        // Configure base URL
-        if (!string.IsNullOrWhiteSpace(_options.ApiBaseUrl))
-        {
-            _httpClient.BaseAddress = new Uri(_options.ApiBaseUrl);
-        }
-
-        // Configure timeout
-        _httpClient.Timeout = TimeSpan.FromSeconds(_options.RequestTimeoutSeconds);
     }
 
     /// <inheritdoc />
@@ -69,8 +54,7 @@ public class AccessControlClient : IAccessControlClient
             Content = JsonContent.Create(request)
         };
 
-        AddAuthorizationHeader(httpRequest);
-
+        // JWT token is added by AccessControlTokenHandler
         var httpResponse = await _httpClient.SendAsync(httpRequest, cancellationToken);
         httpResponse.EnsureSuccessStatusCode();
 
@@ -114,8 +98,7 @@ public class AccessControlClient : IAccessControlClient
             Content = JsonContent.Create(request)
         };
 
-        AddAuthorizationHeader(httpRequest);
-
+        // JWT token is added by AccessControlTokenHandler
         var httpResponse = await _httpClient.SendAsync(httpRequest, cancellationToken);
         httpResponse.EnsureSuccessStatusCode();
 
@@ -165,33 +148,5 @@ public class AccessControlClient : IAccessControlClient
             );
             return false; // Deny on error (fail-secure)
         }
-    }
-
-    /// <summary>
-    /// Adds Authorization header with JWT token from current HTTP context.
-    /// </summary>
-    private void AddAuthorizationHeader(HttpRequestMessage request)
-    {
-        if (!_options.ForwardJwtToken)
-        {
-            return;
-        }
-
-        var httpContext = _httpContextAccessor.HttpContext;
-        if (httpContext == null)
-        {
-            _logger.LogWarning("HttpContext is null, cannot forward JWT token");
-            return;
-        }
-
-        var authHeader = httpContext.Request.Headers["Authorization"].FirstOrDefault();
-        if (string.IsNullOrWhiteSpace(authHeader))
-        {
-            _logger.LogWarning("Authorization header not found in current request");
-            return;
-        }
-
-        request.Headers.Authorization = AuthenticationHeaderValue.Parse(authHeader);
-        _logger.LogDebug("JWT token forwarded to authorization API");
     }
 }
