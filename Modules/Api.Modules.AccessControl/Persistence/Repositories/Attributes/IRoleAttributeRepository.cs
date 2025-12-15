@@ -12,7 +12,7 @@ public interface IRoleAttributeRepository
     /// Gets all role attributes for a specific workstream with optional filtering.
     /// </summary>
     /// <param name="workstream">The workstream ID</param>
-    /// <param name="search">Optional search term for RoleValue or RoleDisplayName</param>
+    /// <param name="search">Optional search term for RoleId</param>
     /// <returns>Collection of role attributes matching the criteria</returns>
     Task<IEnumerable<RoleAttribute>> SearchAsync(string workstream, string? search = null);
 
@@ -24,13 +24,12 @@ public interface IRoleAttributeRepository
     Task<RoleAttribute?> GetByIdAsync(int id);
 
     /// <summary>
-    /// Gets a role attribute by app role ID, role value, and workstream.
+    /// Gets a role attribute by role ID and workstream.
     /// </summary>
-    /// <param name="appRoleId">The application role ID</param>
-    /// <param name="roleValue">The role value</param>
+    /// <param name="roleId">The role ID (RoleName from CasbinRoles)</param>
     /// <param name="workstream">The workstream ID</param>
     /// <returns>The role attribute if found, null otherwise</returns>
-    Task<RoleAttribute?> GetByRoleAndWorkstreamAsync(string appRoleId, string roleValue, string workstream);
+    Task<RoleAttribute?> GetByRoleAndWorkstreamAsync(string roleId, string workstream);
 
     /// <summary>
     /// Creates a new role attribute.

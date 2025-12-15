@@ -16,6 +16,10 @@
     <link rel="stylesheet" href="~/css/theme.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/UI.Modules.AccessControl.styles.css" asp-append-version="true" />
+
+    <!-- Select2 for searchable dropdowns -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
 </head>
 <body>
     <header class="app-header">
@@ -145,7 +149,7 @@
                     <ul class="navbar-nav ms-auto">
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="workstreamDropdown" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                <i class="bi bi-diagram-3"></i> <strong>Workstream:</strong> <span id="currentWorkstream">@(Context.Session.GetString("SelectedWorkstream") ?? "platform")</span>
+                                <i class="bi bi-diagram-3"></i> <strong>Workstream:</strong> <span id="currentWorkstream">@(Context.Session.GetString("SelectedWorkstream") ?? "global")</span>
                             </a>
                             <div class="dropdown-menu dropdown-menu-end" aria-labelledby="workstreamDropdown">
                                 <h6 class="dropdown-header">Select Workstream</h6>
@@ -181,6 +185,10 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+
+    <!-- Select2 for searchable dropdowns -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
     <script>
         // Handle workstream selection
         document.addEventListener('DOMContentLoaded', function() {

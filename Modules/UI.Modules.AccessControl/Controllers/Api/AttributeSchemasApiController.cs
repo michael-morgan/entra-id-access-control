@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 using UI.Modules.AccessControl.Services;
 using UI.Modules.AccessControl.Services.Attributes;
 
@@ -28,16 +29,38 @@ public class AttributeSchemasApiController(
 
         var schemas = await _schemaManagementService.GetActiveSchemasForLevelAsync(workstreamId, attributeLevel);
 
-        var result = schemas.Select(s => new
+        var result = schemas.Select(s =>
         {
-            s.AttributeName,
-            s.AttributeDisplayName,
-            s.DataType,
-            s.IsRequired,
-            s.DefaultValue,
-            s.ValidationRules,
-            s.Description,
-            s.DisplayOrder
+            // Parse ValidationRules to extract allowedValues if present
+            List<object>? allowedValues = null;
+            if (!string.IsNullOrWhiteSpace(s.ValidationRules))
+            {
+                try
+                {
+                    var validationRules = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(s.ValidationRules);
+                    if (validationRules != null && validationRules.TryGetValue("allowedValues", out var allowedValuesElement))
+                    {
+                        allowedValues = JsonSerializer.Deserialize<List<object>>(allowedValuesElement.GetRawText());
+                    }
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse ValidationRules for attribute {AttributeName}", s.AttributeName);
+                }
+            }
+
+            return new
+            {
+                s.AttributeName,
+                s.AttributeDisplayName,
+                s.DataType,
+                s.IsRequired,
+                s.DefaultValue,
+                s.ValidationRules,
+                AllowedValues = allowedValues ?? new List<object>(),
+                s.Description,
+                s.DisplayOrder
+            };
         });
 
         _logger.LogInformation("Retrieved {Count} attribute schemas for workstream={Workstream}, level={Level}",

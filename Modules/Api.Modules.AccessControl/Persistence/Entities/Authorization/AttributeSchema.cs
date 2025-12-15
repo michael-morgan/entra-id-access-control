@@ -21,7 +21,9 @@ public class AttributeSchema
     public required string WorkstreamId { get; set; }
 
     /// <summary>
-    /// Which level this attribute applies to: 'Group', 'Role', or 'User'.
+    /// Which level this attribute applies to: 'Group', 'User', 'Role', or 'Resource'.
+    /// - Group/User/Role: Attributes stored in database and assigned to groups/users/roles
+    /// - Resource: Properties of entities passed
     /// </summary>
     [Required]
     [StringLength(20)]

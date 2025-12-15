@@ -242,10 +242,9 @@ namespace Api.Modules.AccessControl.Persistence.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    AppRoleId = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    RoleValue = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
+                    RoleId = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     WorkstreamId = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    RoleDisplayName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    RoleName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     IsActive = table.Column<bool>(type: "bit", nullable: false),
                     AttributesJson = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     CreatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
@@ -267,6 +266,8 @@ namespace Api.Modules.AccessControl.Persistence.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     UserId = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
                     WorkstreamId = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    UserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
                     AttributesJson = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     CreatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
                     ModifiedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
@@ -576,17 +577,11 @@ namespace Api.Modules.AccessControl.Persistence.Migrations
                 column: "WorkstreamId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_RoleAttributes_AppRoleId_Workstream",
+                name: "IX_RoleAttributes_RoleId_Workstream",
                 schema: "auth",
                 table: "RoleAttributes",
-                columns: new[] { "AppRoleId", "WorkstreamId" },
+                columns: new[] { "RoleId", "WorkstreamId" },
                 unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_RoleAttributes_RoleValue_Workstream",
-                schema: "auth",
-                table: "RoleAttributes",
-                columns: new[] { "RoleValue", "WorkstreamId" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_RoleAttributes_Workstream",

@@ -12,6 +12,9 @@
         <form asp-action="Create">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
+            @* Hidden field to bind WorkstreamId from ViewBag *@
+            <input type="hidden" asp-for="WorkstreamId" value="@ViewBag.SelectedWorkstream" />
+
             <div class="mb-3">
                 <label asp-for="RoleName" class="form-label"></label>
                 <input asp-for="RoleName" class="form-control" placeholder="e.g., loan_approver, claims_adjuster" />

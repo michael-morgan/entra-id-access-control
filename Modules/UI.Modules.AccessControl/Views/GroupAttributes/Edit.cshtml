@@ -4,9 +4,8 @@
     ViewData["Title"] = "Edit Group Attributes";
 }
 
-<h2>Edit Group Attributes</h2>
+<h1>Edit Group Attributes</h1>
 
-<h4>Group: @Model.GroupName</h4>
 <hr />
 <div class="row">
     <div class="col-md-8">
@@ -14,26 +13,51 @@
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <input type="hidden" asp-for="Id" />
 
+            @* Group ID - Read-only display *@
             <div class="mb-3">
-                <label asp-for="GroupId" class="form-label"></label>
+                <label asp-for="GroupId" class="form-label">Group ID</label>
                 <input asp-for="GroupId" class="form-control" readonly />
                 <span asp-validation-for="GroupId" class="text-danger"></span>
                 <div class="form-text">Group ID cannot be changed</div>
             </div>
 
+            @* Workstream - Read-only display *@
             <div class="mb-3">
-                <label asp-for="GroupName" class="form-label"></label>
-                <input asp-for="GroupName" class="form-control" />
-                <span asp-validation-for="GroupName" class="text-danger"></span>
-            </div>
-
-            <div class="mb-3">
-                <label asp-for="WorkstreamId" class="form-label"></label>
-                <input asp-for="WorkstreamId" class="form-control" placeholder="e.g., Loans, Claims, Payments" />
+                <label asp-for="WorkstreamId" class="form-label">Workstream</label>
+                <select asp-for="WorkstreamId" class="form-select" disabled>
+                    <option value="@Model.WorkstreamId" selected>@Model.WorkstreamId</option>
+                </select>
+                @* Hidden input to ensure value posts back *@
+                <input type="hidden" asp-for="WorkstreamId" value="@Model.WorkstreamId" />
                 <span asp-validation-for="WorkstreamId" class="text-danger"></span>
-                <div class="form-text">Optional workstream identifier for multi-tenant scenarios</div>
+                <div class="form-text">Workstream cannot be changed</div>
             </div>
 
+            @* Dynamic Attributes Form (Required fields managed by attribute-form-builder.js) *@
+            <div class="mb-3">
+                <label class="form-label">Required Attributes</label>
+                <div id="attributeFormContainer"></div>
+                <input asp-for="AttributesJson" type="hidden" />
+                <span asp-validation-for="AttributesJson" class="text-danger"></span>
+            </div>
+
+            @* Optional Attributes in Accordion *@
+            <div class="accordion mb-3" id="optionalFieldsAccordion">
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingOptional">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOptional" aria-expanded="false" aria-controls="collapseOptional">
+                            Optional Attributes
+                        </button>
+                    </h2>
+                    <div id="collapseOptional" class="accordion-collapse collapse" aria-labelledby="headingOptional" data-bs-parent="#optionalFieldsAccordion">
+                        <div class="accordion-body" id="optionalAttributeFormContainer">
+                            <p class="text-muted small">Optional attributes will appear here based on the AttributeSchemas configured for this workstream and attribute level.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* Is Active - Important field, always visible *@
             <div class="mb-3">
                 <div class="form-check">
                     <input asp-for="IsActive" class="form-check-input" type="checkbox" />
@@ -41,13 +65,6 @@
                 </div>
                 <span asp-validation-for="IsActive" class="text-danger"></span>
                 <div class="form-text">Whether this group's attributes are currently active</div>
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">Group Attributes</label>
-                <div id="attributeFormContainer"></div>
-                <input asp-for="AttributesJson" type="hidden" />
-                <span asp-validation-for="AttributesJson" class="text-danger"></span>
             </div>
 
             <div class="mb-3">
@@ -60,19 +77,30 @@
     <div class="col-md-4">
         <div class="card">
             <div class="card-header">
-                <h5>JSON Attributes Example</h5>
+                <h5>Edit Information</h5>
             </div>
             <div class="card-body">
-                <h6>Sample JSON:</h6>
-                <pre class="small bg-light p-2"><code>{
-  "Department": "Finance",
-  "Region": "North",
-  "ManagementLevel": 2,
-  "ApprovalLimit": 50000,
-  "CostCenter": "CC-12345",
-  "BusinessUnit": "Corporate"
-}</code></pre>
-                <p class="small mt-2">Ensure the JSON is valid before saving.</p>
+                <dl class="row mb-0">
+                    <dt class="col-sm-5">Group:</dt>
+                    <dd class="col-sm-7">@Model.GroupName</dd>
+
+                    <dt class="col-sm-5">Workstream:</dt>
+                    <dd class="col-sm-7"><span class="badge bg-primary">@Model.WorkstreamId</span></dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5>Attribute Precedence</h5>
+            </div>
+            <div class="card-body">
+                <ol class="small">
+                    <li><strong>User attributes</strong> (highest)</li>
+                    <li><strong>Role attributes</strong></li>
+                    <li><strong>Group attributes</strong> (lowest)</li>
+                </ol>
+                <p class="small text-muted mt-2">When evaluating ABAC policies, user-specific attributes override role and group attributes.</p>
             </div>
         </div>
     </div>
@@ -83,12 +111,14 @@
     <script src="~/js/attribute-form-builder.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const workstreamId = '@ViewBag.SelectedWorkstream';
+            // Initialize attribute form builder
+            const workstreamId = '@Model.WorkstreamId';
             const formBuilder = new AttributeFormBuilder(
                 workstreamId,
                 'Group',
                 '#attributeFormContainer',
-                '#AttributesJson'
+                '#AttributesJson',
+                '#optionalAttributeFormContainer'
             );
             formBuilder.init();
         });

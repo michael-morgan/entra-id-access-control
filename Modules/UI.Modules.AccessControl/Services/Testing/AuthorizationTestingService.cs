@@ -104,9 +104,8 @@ public class AuthorizationTestingService(
                 return result;
             }
 
-            // Extract groups and roles
+            // Extract groups from JWT (roles come from Casbin, not JWT)
             var groupClaims = jwtToken.Claims.Where(c => c.Type == "groups").Select(c => c.Value).ToList();
-            var roleClaims = jwtToken.Claims.Where(c => c.Type == "roles" || c.Type == "role").Select(c => c.Value).ToList();
 
             // Add step: JWT Claims Extracted
             trace.Add(new AuthorizationStep
@@ -114,49 +113,29 @@ public class AuthorizationTestingService(
                 StepName = "JWT Claims Extracted",
                 Description = $"User ID: {userId}, Name: {userName}",
                 Result = "Pass",
-                Details = $"Token contains {jwtToken.Claims.Count()} claims",
+                Details = $"Token contains {jwtToken.Claims.Count()} claims, {groupClaims.Count} groups",
                 Order = stepOrder++
             });
 
-            // Add step: Groups and Roles Identified
-            trace.Add(new AuthorizationStep
-            {
-                StepName = "Groups and Roles Identified",
-                Description = $"Groups: [{string.Join(", ", groupClaims)}], Roles: [{string.Join(", ", roleClaims)}]",
-                Result = "Pass",
-                Details = $"Found {groupClaims.Count} groups and {roleClaims.Count} roles",
-                Order = stepOrder++
-            });
-
-            // Build subjects list (user ID + roles + groups)
-            var subjects = new List<string>();
-            if (!string.IsNullOrWhiteSpace(userId))
-                subjects.Add(userId);
-            subjects.AddRange(roleClaims.Where(r => !string.IsNullOrWhiteSpace(r)));
-            subjects.AddRange(groupClaims.Where(g => !string.IsNullOrWhiteSpace(g)));
-
-            // Resolve group-to-role mappings from Casbin policies (type "g")
-            var roleMappings = (await _policyRepository.GetBySubjectIdsAsync(subjects, policyType: "g"))
-                .Where(p => p.WorkstreamId == request.WorkstreamId || p.WorkstreamId == "*")
-                .ToList();
-
-            var resolvedRoles = roleMappings
-                .Where(g => !string.IsNullOrWhiteSpace(g.V1))
-                .Select(g => g.V1!)
-                .Distinct()
-                .ToList();
-
-            subjects.AddRange(resolvedRoles);
+            // Resolve roles from Casbin policies based on group memberships
+            var resolvedRoles = await ResolveRolesFromGroupsAsync(groupClaims, request.WorkstreamId);
 
             // Add step: Role Resolution
             trace.Add(new AuthorizationStep
             {
-                StepName = "Role Resolution",
-                Description = $"Resolved roles: [{string.Join(", ", resolvedRoles)}]",
+                StepName = "Role Resolution (Casbin)",
+                Description = $"Resolved {resolvedRoles.Count} roles from groups: [{string.Join(", ", resolvedRoles)}]",
                 Result = "Pass",
-                Details = $"Found {roleMappings.Count} group-to-role mappings, resolved to {resolvedRoles.Count} roles",
+                Details = $"Used Casbin policy engine to resolve roles from {groupClaims.Count} groups",
                 Order = stepOrder++
             });
+
+            // Build subjects list (user ID + resolved roles + groups)
+            var subjects = new List<string>();
+            if (!string.IsNullOrWhiteSpace(userId))
+                subjects.Add(userId);
+            subjects.AddRange(resolvedRoles.Where(r => !string.IsNullOrWhiteSpace(r)));
+            subjects.AddRange(groupClaims.Where(g => !string.IsNullOrWhiteSpace(g)));
 
             // Check RBAC policies (Casbin type "p")
             // V0=Subject, V1=Workstream, V2=Resource, V3=Action, V4=Effect
@@ -198,7 +177,7 @@ public class AuthorizationTestingService(
                         userId,
                         userName,
                         groupClaims,
-                        roleClaims,
+                        resolvedRoles,
                         request.WorkstreamId,
                         request.MockEntityJson);
 
@@ -283,6 +262,9 @@ public class AuthorizationTestingService(
                             abacAllowed = genericResult.Allowed;
                             abacDenyReason = genericResult.Reason;
                         }
+
+                        // Store generic result for diagnostic extraction later
+                        result.DiagnosticMessage = FormatDiagnostics(genericResult.Diagnostics, rbacAllowed, abacAllowed);
                     }
                     else
                     {
@@ -487,7 +469,7 @@ public class AuthorizationTestingService(
         var allRoleAttrs = await _roleAttributeRepository.SearchAsync(workstreamId);
         foreach (var role in roles)
         {
-            var roleAttr = allRoleAttrs.FirstOrDefault(r => r.RoleValue == role);
+            var roleAttr = allRoleAttrs.FirstOrDefault(r => r.RoleId == role);
             if (roleAttr != null && !string.IsNullOrEmpty(roleAttr.AttributesJson))
             {
                 try
@@ -549,5 +531,177 @@ public class AuthorizationTestingService(
             "g2" => $"{policy.V0} → {policy.V1} in domain {policy.V2}",
             _ => $"{policy.V0}, {policy.V1}, {policy.V2}"
         };
+    }
+
+    /// <summary>
+    /// Resolves all roles for the user's groups from Casbin policies.
+    /// Includes both direct and inherited roles.
+    /// </summary>
+    private async Task<List<string>> ResolveRolesFromGroupsAsync(List<string> groupIds, string workstreamId)
+    {
+        if (groupIds.Count == 0)
+            return [];
+
+        var allRoles = new List<string>();
+        var visited = new HashSet<string>();
+
+        // Resolve roles for each group recursively
+        foreach (var groupId in groupIds)
+        {
+            await ResolveRolesRecursivelyAsync(groupId, workstreamId, allRoles, visited);
+        }
+
+        // Return distinct roles
+        return allRoles.Distinct().ToList();
+    }
+
+    /// <summary>
+    /// Recursively resolves all roles for a subject (group or role), including inherited roles.
+    /// </summary>
+    private async Task ResolveRolesRecursivelyAsync(
+        string subject,
+        string workstreamId,
+        List<string> allRoles,
+        HashSet<string> visited)
+    {
+        // Prevent infinite loops in case of circular role dependencies
+        if (!visited.Add(subject))
+            return;
+
+        // Get direct roles from policies (fetch 'g' policies where V0=subject and V2=workstream)
+        var policies = await _policyRepository.GetRolesForSubjectsAsync(new[] { subject }, workstreamId);
+
+        foreach (var policy in policies)
+        {
+            var role = policy.V1; // V1 contains the role name in 'g' policies
+            if (string.IsNullOrWhiteSpace(role))
+                continue;
+
+            // Add the role if not already present
+            if (!allRoles.Contains(role))
+            {
+                allRoles.Add(role);
+
+                // Recursively resolve inherited roles (role-to-role inheritance)
+                await ResolveRolesRecursivelyAsync(role, workstreamId, allRoles, visited);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Formats ABAC diagnostics into a user-friendly message for display in UI.
+    /// </summary>
+    private static string? FormatDiagnostics(AbacEvaluationDiagnostics? diagnostics, bool rbacAllowed, bool abacAllowed)
+    {
+        if (diagnostics == null)
+            return null;
+
+        var lines = new List<string>();
+
+        // Add matched rule groups
+        if (diagnostics.MatchedRuleGroups.Any())
+        {
+            lines.Add("✓ Matched Rule Groups:");
+            foreach (var group in diagnostics.MatchedRuleGroups)
+            {
+                lines.Add($"  - {group.GroupName} ({group.Resource} + {group.Action}) - {group.RuleCount} rule(s)");
+            }
+        }
+
+        // Add evaluated rules
+        if (diagnostics.EvaluatedRules.Any())
+        {
+            lines.Add("");
+            lines.Add("✓ Evaluated Rules:");
+            foreach (var rule in diagnostics.EvaluatedRules)
+            {
+                var icon = rule.Passed ? "✓" : "✗";
+                lines.Add($"  {icon} {rule.RuleName} ({rule.RuleType}): {(rule.Passed ? "Passed" : "Failed")}");
+                if (!string.IsNullOrEmpty(rule.Reason))
+                {
+                    lines.Add($"      {rule.Reason}");
+                }
+            }
+        }
+
+        // Add missing validations
+        if (diagnostics.MissingValidations.Any())
+        {
+            lines.Add("");
+            lines.Add("⚠ Missing Validations Detected:");
+
+            var criticalSeverity = diagnostics.MissingValidations.Where(m => m.Severity == "Critical").ToList();
+            var highSeverity = diagnostics.MissingValidations.Where(m => m.Severity == "High").ToList();
+            var mediumSeverity = diagnostics.MissingValidations.Where(m => m.Severity == "Medium").ToList();
+            var lowSeverity = diagnostics.MissingValidations.Where(m => m.Severity == "Low").ToList();
+
+            if (criticalSeverity.Any())
+            {
+                lines.Add("  CRITICAL (No ABAC Rule Group):");
+                foreach (var missing in criticalSeverity)
+                {
+                    lines.Add($"    🚨 {missing.AttributeName} ({missing.AttributeSource})");
+                    lines.Add($"        Reason: {missing.Reason}");
+                    if (!string.IsNullOrEmpty(missing.RecommendedRuleType))
+                    {
+                        lines.Add($"        Recommendation: Add {missing.RecommendedRuleType} rule");
+                    }
+                }
+            }
+
+            if (highSeverity.Any())
+            {
+                lines.Add("  High Priority (Required Attributes):");
+                foreach (var missing in highSeverity)
+                {
+                    lines.Add($"    ✗ {missing.AttributeName} ({missing.AttributeSource})");
+                    lines.Add($"        Reason: {missing.Reason}");
+                    if (!string.IsNullOrEmpty(missing.RecommendedRuleType))
+                    {
+                        lines.Add($"        Recommendation: Add {missing.RecommendedRuleType} rule");
+                    }
+                    if (missing.ExistsInActions.Any())
+                    {
+                        lines.Add($"        ℹ Already validated in: {string.Join(", ", missing.ExistsInActions)}");
+                    }
+                }
+            }
+
+            if (mediumSeverity.Any())
+            {
+                lines.Add("  Medium Priority (Common Patterns):");
+                foreach (var missing in mediumSeverity)
+                {
+                    lines.Add($"    ⚠ {missing.AttributeName} ({missing.AttributeSource})");
+                    lines.Add($"        Reason: {missing.Reason}");
+                    if (missing.ExistsInActions.Any())
+                    {
+                        lines.Add($"        ℹ Validated in: {string.Join(", ", missing.ExistsInActions)}");
+                    }
+                }
+            }
+
+            if (lowSeverity.Any())
+            {
+                lines.Add("  Low Priority (Suggestions):");
+                foreach (var missing in lowSeverity)
+                {
+                    lines.Add($"    ℹ {missing.AttributeName}: {missing.Reason}");
+                }
+            }
+        }
+
+        // Add suggestions
+        if (diagnostics.Suggestions.Any())
+        {
+            lines.Add("");
+            lines.Add("Suggestions:");
+            foreach (var suggestion in diagnostics.Suggestions)
+            {
+                lines.Add($"  → {suggestion}");
+            }
+        }
+
+        return lines.Any() ? string.Join("\n", lines) : null;
     }
 }

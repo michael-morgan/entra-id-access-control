@@ -34,17 +34,12 @@ public class AbacEvaluationService(
 
         try
         {
-            var context = JsonSerializer.Deserialize<AbacContext>(contextJson);
+            var context = JsonSerializer.Deserialize<AbacContext>(contextJson)?.EnsureCaseInsensitiveDictionaries();
             if (context == null)
             {
                 _logger.LogDebug("Deserialized context is null, allowing request");
                 return true;
             }
-
-            var region = context.GetUserAttribute<string>("Region");
-            var department = context.GetUserAttribute<string>("Department");
-            _logger.LogDebug("ABAC context loaded - Region: {Region}, Department: {Department}",
-                region, department);
 
             // Hardcoded workstream evaluators have been removed.
             // ABAC evaluation now handled by:
@@ -81,7 +76,7 @@ public class AbacEvaluationService(
 
         try
         {
-            var context = JsonSerializer.Deserialize<AbacContext>(contextJson);
+            var context = JsonSerializer.Deserialize<AbacContext>(contextJson)?.EnsureCaseInsensitiveDictionaries();
             if (context == null)
             {
                 _logger.LogDebug("Deserialized context is null, allowing request");

@@ -18,12 +18,15 @@ public interface IPolicyEngine
     bool Enforce(string subject, string workstream, string resource, string action, string context);
 
     /// <summary>
-    /// Gets the roles assigned to a subject within a workstream.
+    /// Gets all roles for a subject within a workstream, including inherited roles.
+    /// Resolves the complete role hierarchy using recursive Casbin policy traversal.
+    /// Results are cached to improve performance.
     /// </summary>
     /// <param name="subject">Subject (user ID or group ID)</param>
     /// <param name="workstream">Workstream identifier</param>
-    /// <returns>Collection of role names</returns>
-    IEnumerable<string> GetRolesForSubject(string subject, string workstream);
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Collection of all roles (direct and inherited) for the subject</returns>
+    Task<IEnumerable<string>> GetAllRolesForSubjectAsync(string subject, string workstream, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Checks if a subject has a specific role in a workstream.

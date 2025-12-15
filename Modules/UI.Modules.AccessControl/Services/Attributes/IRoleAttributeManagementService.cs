@@ -9,5 +9,6 @@ public interface IRoleAttributeManagementService
     Task<(bool Success, RoleAttribute? RoleAttribute, string? ErrorMessage)> CreateRoleAttributeAsync(RoleAttribute roleAttribute, string workstream);
     Task<(bool Success, string? ErrorMessage)> UpdateRoleAttributeAsync(int id, RoleAttribute roleAttribute);
     Task<bool> DeleteRoleAttributeAsync(int id);
-    Task<bool> RoleAttributeExistsForWorkstreamAsync(string appRoleId, string roleValue, string workstream, int? excludeId = null);
+    Task<bool> RoleAttributeExistsForWorkstreamAsync(string roleId, string workstream, int? excludeId = null);
+    Task<IEnumerable<CasbinRole>> GetRolesForWorkstreamAsync(string workstream);
 }

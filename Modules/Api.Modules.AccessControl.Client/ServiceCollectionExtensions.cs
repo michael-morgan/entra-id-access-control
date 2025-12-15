@@ -96,9 +96,6 @@ public static class ServiceCollectionExtensions
             redisOptions.InstanceName = "AccessControl:";
         });
 
-        // Register inner client (without caching)
-        services.AddScoped<AccessControlClient>();
-
         // Register cached client as the implementation
         services.AddScoped<IAccessControlClient, CachedAccessControlClient>(sp =>
         {

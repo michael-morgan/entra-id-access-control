@@ -73,7 +73,7 @@ public class PolicyManagementService(
             V4 = model.V4,
             V5 = model.V5,
             WorkstreamId = workstream,
-            IsActive = true,
+            IsActive = model.IsActive,
             CreatedAt = DateTimeOffset.UtcNow,
             ModifiedAt = DateTimeOffset.UtcNow,
             CreatedBy = createdBy,
@@ -99,6 +99,7 @@ public class PolicyManagementService(
         policy.V3 = model.V3;
         policy.V4 = model.V4;
         policy.V5 = model.V5;
+        policy.IsActive = model.IsActive;
         policy.ModifiedBy = modifiedBy;
         policy.ModifiedAt = DateTimeOffset.UtcNow;
 
@@ -162,7 +163,7 @@ public class PolicyManagementService(
                 var users = await _userService.GetUsersByIdsAsync(notFoundIds);
                 foreach (var kvp in users)
                 {
-                    displayNames[kvp.Key] = kvp.Value.DisplayName ?? kvp.Value.UserPrincipalName ?? kvp.Key;
+                    displayNames[kvp.Key] = kvp.Value.DisplayName ?? kvp.Key;
                 }
             }
         }

@@ -74,4 +74,17 @@ public interface IPolicyRepository
     /// <param name="policyType">Optional policy type filter (p, g, g2)</param>
     /// <returns>Collection of policies where V0 matches any of the subject IDs</returns>
     Task<IEnumerable<CasbinPolicy>> GetBySubjectIdsAsync(IEnumerable<string> subjectIds, string? policyType = null);
+
+    /// <summary>
+    /// Gets role mappings for multiple subjects in a specific workstream.
+    /// Optimized batch query for role resolution.
+    /// </summary>
+    /// <param name="subjectIds">Collection of subject IDs (user IDs, group IDs)</param>
+    /// <param name="workstream">The workstream ID to filter by</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Collection of 'g' policies where V0 matches subject IDs and V2 matches workstream</returns>
+    Task<IEnumerable<CasbinPolicy>> GetRolesForSubjectsAsync(
+        IEnumerable<string> subjectIds,
+        string workstream,
+        CancellationToken cancellationToken = default);
 }

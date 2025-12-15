@@ -1,4 +1,4 @@
-@model Api.Modules.AccessControl.Persistence.Entities.Authorization.RoleAttribute
+@model UI.Modules.AccessControl.Models.RoleAttributeViewModel
 
 @{
     ViewData["Title"] = "Role Attribute Details";
@@ -7,20 +7,29 @@
 <h2>Role Attribute Details</h2>
 
 <div>
-    <h4>@Model.RoleDisplayName</h4>
+    <h4>
+        @if (!string.IsNullOrEmpty(Model.RoleName))
+        {
+            @Model.RoleName <small class="text-muted">(@Model.RoleId)</small>
+        }
+        else
+        {
+            @Model.RoleId
+        }
+    </h4>
     <hr />
     <dl class="row">
         <dt class="col-sm-3">ID</dt>
         <dd class="col-sm-9">@Model.Id</dd>
 
-        <dt class="col-sm-3">App Role ID</dt>
-        <dd class="col-sm-9"><code>@Model.AppRoleId</code></dd>
+        <dt class="col-sm-3">Role ID</dt>
+        <dd class="col-sm-9"><code>@Model.RoleId</code></dd>
 
-        <dt class="col-sm-3">Role Value</dt>
-        <dd class="col-sm-9"><code>@Model.RoleValue</code></dd>
-
-        <dt class="col-sm-3">Role Display Name</dt>
-        <dd class="col-sm-9">@Model.RoleDisplayName</dd>
+        @if (!string.IsNullOrEmpty(Model.RoleName))
+        {
+            <dt class="col-sm-3">Role Name</dt>
+            <dd class="col-sm-9">@Model.RoleName</dd>
+        }
 
         <dt class="col-sm-3">Workstream ID</dt>
         <dd class="col-sm-9">
@@ -59,10 +68,28 @@
         </dd>
 
         <dt class="col-sm-3">Created At</dt>
-        <dd class="col-sm-9">@Model.CreatedAt</dd>
+        <dd class="col-sm-9">
+            @if (Model.CreatedAt.HasValue)
+            {
+                @Model.CreatedAt.Value.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss")
+            }
+            else
+            {
+                <span class="text-muted">Not available</span>
+            }
+        </dd>
 
         <dt class="col-sm-3">Modified At</dt>
-        <dd class="col-sm-9">@Model.ModifiedAt</dd>
+        <dd class="col-sm-9">
+            @if (Model.ModifiedAt.HasValue)
+            {
+                @Model.ModifiedAt.Value.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss")
+            }
+            else
+            {
+                <span class="text-muted">Not modified</span>
+            }
+        </dd>
     </dl>
 </div>
 <div>

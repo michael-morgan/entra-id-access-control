@@ -6,6 +6,22 @@
 
 <h1>User Attributes (ABAC)</h1>
 
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
 <p>
     <a asp-action="Create" class="btn btn-primary">Create New User Attributes</a>
 </p>
@@ -26,6 +42,7 @@
         <tr>
             <th>User</th>
             <th>Workstream ID</th>
+            <th>Status</th>
             <th>Attributes Preview</th>
             <th>Actions</th>
         </tr>
@@ -37,13 +54,17 @@
 @foreach (var item in Model) {
         <tr>
             <td>
-                @if (userDisplayNames.ContainsKey(item.UserId))
+                @{
+                    var displayName = item.UserName;
+                    if (string.IsNullOrEmpty(displayName) && userDisplayNames.ContainsKey(item.UserId))
+                    {
+                        displayName = userDisplayNames[item.UserId];
+                    }
+                }
+                @if (!string.IsNullOrEmpty(displayName))
                 {
-                    <div>
-                        <strong>@userDisplayNames[item.UserId]</strong>
-                        <br />
-                        <code class="small text-muted">@item.UserId</code>
-                    </div>
+                    <div>@displayName</div>
+                    <small class="text-muted"><code>@item.UserId</code></small>
                 }
                 else
                 {
@@ -58,6 +79,16 @@
                 else
                 {
                     <span class="text-muted">N/A</span>
+                }
+            </td>
+            <td>
+                @if (item.IsActive)
+                {
+                    <span class="badge bg-success">Active</span>
+                }
+                else
+                {
+                    <span class="badge bg-secondary">Inactive</span>
                 }
             </td>
             <td>

@@ -11,8 +11,6 @@ public sealed record CurrentUser
     public required UserType Type { get; init; }
     public string? IpAddress { get; init; }
     public required string WorkstreamId { get; init; }
-    public string[]? Regions { get; init; }
-    public bool HasGlobalAccess { get; init; }
 }
 
 /// <summary>

@@ -19,12 +19,11 @@ public class RoleAttributeRepository(AccessControlDbContext context) : IRoleAttr
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            query = query.Where(ra => ra.RoleValue.Contains(search) ||
-                                    (ra.RoleDisplayName != null && ra.RoleDisplayName.Contains(search)));
+            query = query.Where(ra => ra.RoleId.Contains(search));
         }
 
         return await query
-            .OrderBy(ra => ra.RoleDisplayName ?? ra.RoleValue)
+            .OrderBy(ra => ra.RoleId)
             .AsNoTracking()
             .ToListAsync();
     }
@@ -38,12 +37,11 @@ public class RoleAttributeRepository(AccessControlDbContext context) : IRoleAttr
     }
 
     /// <inheritdoc />
-    public async Task<RoleAttribute?> GetByRoleAndWorkstreamAsync(string appRoleId, string roleValue, string workstream)
+    public async Task<RoleAttribute?> GetByRoleAndWorkstreamAsync(string roleId, string workstream)
     {
         return await _context.RoleAttributes
             .AsNoTracking()
-            .FirstOrDefaultAsync(ra => ra.AppRoleId == appRoleId &&
-                                      ra.RoleValue == roleValue &&
+            .FirstOrDefaultAsync(ra => ra.RoleId == roleId &&
                                       ra.WorkstreamId == workstream);
     }
 

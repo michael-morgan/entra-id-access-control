@@ -1,4 +1,4 @@
-@model Api.Modules.AccessControl.Persistence.Entities.Authorization.GroupAttribute
+@model UI.Modules.AccessControl.Models.GroupAttributeViewModel
 
 @{
     ViewData["Title"] = "Group Attribute Details";
@@ -56,10 +56,28 @@
         </dd>
 
         <dt class="col-sm-3">Created At</dt>
-        <dd class="col-sm-9">@Model.CreatedAt</dd>
+        <dd class="col-sm-9">
+            @if (Model.CreatedAt.HasValue)
+            {
+                @Model.CreatedAt.Value.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss")
+            }
+            else
+            {
+                <span class="text-muted">Not available</span>
+            }
+        </dd>
 
         <dt class="col-sm-3">Modified At</dt>
-        <dd class="col-sm-9">@Model.ModifiedAt</dd>
+        <dd class="col-sm-9">
+            @if (Model.ModifiedAt.HasValue)
+            {
+                @Model.ModifiedAt.Value.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss")
+            }
+            else
+            {
+                <span class="text-muted">Not modified</span>
+            }
+        </dd>
     </dl>
 </div>
 <div>

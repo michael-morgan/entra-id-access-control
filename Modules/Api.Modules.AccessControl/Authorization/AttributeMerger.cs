@@ -16,7 +16,7 @@ public class AttributeMerger : IAttributeMerger
         IDictionary<string, RoleAttributes> roleAttributes,
         UserAttributes? userAttributes)
     {
-        var result = new Dictionary<string, object>();
+        var result = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
 
         // 1. Start with group attributes (lowest precedence)
         foreach (var group in groupAttributes.Values)

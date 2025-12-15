@@ -7,10 +7,9 @@ namespace Api.Modules.AccessControl.Models;
 /// </summary>
 public sealed record RoleAttributes
 {
-    public required string AppRoleId { get; init; }
-    public required string RoleValue { get; init; }
+    public required string RoleId { get; init; }
     public required string WorkstreamId { get; init; }
-    public string? RoleDisplayName { get; init; }
+    public string? RoleName { get; init; }
     public Dictionary<string, JsonElement> Attributes { get; init; } = [];
 
     /// <summary>

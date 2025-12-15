@@ -19,9 +19,11 @@ namespace UI.Modules.AccessControl.Controllers.Attributes;
 /// </summary>
 public class GroupAttributesController(
     IGroupAttributeManagementService groupAttributeManagementService,
+    IGraphGroupService graphGroupService,
     ILogger<GroupAttributesController> logger) : Controller
 {
     private readonly IGroupAttributeManagementService _groupAttributeManagementService = groupAttributeManagementService;
+    private readonly IGraphGroupService _graphGroupService = graphGroupService;
     private readonly ILogger<GroupAttributesController> _logger = logger;
 
     // GET: GroupAttributes
@@ -53,17 +55,24 @@ public class GroupAttributesController(
             WorkstreamId = groupAttribute.WorkstreamId,
             GroupName = groupAttribute.GroupName,
             IsActive = groupAttribute.IsActive,
-            AttributesJson = groupAttribute.AttributesJson
+            AttributesJson = groupAttribute.AttributesJson,
+            CreatedAt = groupAttribute.CreatedAt,
+            ModifiedAt = groupAttribute.ModifiedAt
         };
 
         return View(viewModel);
     }
 
     // GET: GroupAttributes/Create
-    public IActionResult Create()
+    public async Task<IActionResult> Create()
     {
         var selectedWorkstream = WorkstreamController.GetSelectedWorkstream(HttpContext);
         ViewBag.SelectedWorkstream = selectedWorkstream;
+
+        // Get all groups (groups are not workstream-specific)
+        var groups = await _graphGroupService.GetAllGroupsAsync();
+        ViewBag.Groups = groups.Select(g => new { Id = g.Id, DisplayName = g.DisplayName ?? g.Id }).ToList();
+
         return View();
     }
 
@@ -82,14 +91,28 @@ public class GroupAttributesController(
             if (!success)
             {
                 ModelState.AddModelError("GroupId", errorMessage!);
+                ViewBag.SelectedWorkstream = selectedWorkstream;
+
+                // Re-populate groups dropdown on error
+                var groups = await _graphGroupService.GetAllGroupsAsync();
+                ViewBag.Groups = groups.Select(g => new { Id = g.Id, DisplayName = g.DisplayName ?? g.Id }).ToList();
+
                 return View(model);
             }
 
             _logger.LogInformation("Created group attributes for {GroupId} in workstream {Workstream}",
                 groupAttribute!.GroupId, selectedWorkstream);
 
+            TempData["SuccessMessage"] = "Group attributes created successfully.";
             return RedirectToAction(nameof(Index));
         }
+
+        // Re-populate groups dropdown on validation error
+        var selectedWorkstream2 = WorkstreamController.GetSelectedWorkstream(HttpContext);
+        ViewBag.SelectedWorkstream = selectedWorkstream2;
+        var groups2 = await _graphGroupService.GetAllGroupsAsync();
+        ViewBag.Groups = groups2.Select(g => new { Id = g.Id, DisplayName = g.DisplayName ?? g.Id }).ToList();
+
         return View(model);
     }
 
@@ -141,6 +164,7 @@ public class GroupAttributesController(
 
             _logger.LogInformation("Updated group attributes for {GroupId}", model.GroupId);
 
+            TempData["SuccessMessage"] = "Group attributes updated successfully.";
             return RedirectToAction(nameof(Index));
         }
 
@@ -163,7 +187,9 @@ public class GroupAttributesController(
             WorkstreamId = groupAttribute.WorkstreamId,
             GroupName = groupAttribute.GroupName,
             IsActive = groupAttribute.IsActive,
-            AttributesJson = groupAttribute.AttributesJson
+            AttributesJson = groupAttribute.AttributesJson,
+            CreatedAt = groupAttribute.CreatedAt,
+            ModifiedAt = groupAttribute.ModifiedAt
         };
 
         return View(viewModel);
@@ -179,6 +205,11 @@ public class GroupAttributesController(
         if (success)
         {
             _logger.LogWarning("Deleted group attributes {Id}", id);
+            TempData["SuccessMessage"] = "Group attributes deleted successfully.";
+        }
+        else
+        {
+            TempData["ErrorMessage"] = "Failed to delete group attributes. The record may not exist.";
         }
 
         return RedirectToAction(nameof(Index));

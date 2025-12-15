@@ -599,11 +599,6 @@ namespace Api.Modules.AccessControl.Persistence.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("AppRoleId")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
                     b.Property<string>("AttributesJson")
                         .HasColumnType("nvarchar(max)");
 
@@ -624,12 +619,12 @@ namespace Api.Modules.AccessControl.Persistence.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
-                    b.Property<string>("RoleDisplayName")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<string>("RoleValue")
+                    b.Property<string>("RoleId")
                         .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("RoleName")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
@@ -643,12 +638,9 @@ namespace Api.Modules.AccessControl.Persistence.Migrations
                     b.HasIndex("WorkstreamId")
                         .HasDatabaseName("IX_RoleAttributes_Workstream");
 
-                    b.HasIndex("AppRoleId", "WorkstreamId")
+                    b.HasIndex("RoleId", "WorkstreamId")
                         .IsUnique()
-                        .HasDatabaseName("IX_RoleAttributes_AppRoleId_Workstream");
-
-                    b.HasIndex("RoleValue", "WorkstreamId")
-                        .HasDatabaseName("IX_RoleAttributes_RoleValue_Workstream");
+                        .HasDatabaseName("IX_RoleAttributes_RoleId_Workstream");
 
                     b.ToTable("RoleAttributes", "auth");
                 });
@@ -701,6 +693,9 @@ namespace Api.Modules.AccessControl.Persistence.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
                     b.Property<DateTimeOffset?>("ModifiedAt")
                         .HasColumnType("datetimeoffset");
 
@@ -710,6 +705,10 @@ namespace Api.Modules.AccessControl.Persistence.Migrations
 
                     b.Property<string>("UserId")
                         .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("UserName")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 

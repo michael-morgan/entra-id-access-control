@@ -1,4 +1,4 @@
-@model Api.Modules.AccessControl.Persistence.Entities.Authorization.UserAttribute
+@model UI.Modules.AccessControl.Models.UserAttributeViewModel
 
 @{
     ViewData["Title"] = "User Attribute Details";
@@ -7,26 +7,20 @@
 <h2>User Attribute Details</h2>
 
 <div>
-    <h4>User Attributes for @ViewBag.UserDisplayName</h4>
+    <h4>User Attributes for @(Model.UserName ?? ViewBag.UserDisplayName ?? Model.UserId)</h4>
     <hr />
     <dl class="row">
-        <dt class="col-sm-3">
-            @Html.DisplayNameFor(model => model.Id)
-        </dt>
+        <dt class="col-sm-3">ID</dt>
+        <dd class="col-sm-9">@Model.Id</dd>
+
+        <dt class="col-sm-3">User</dt>
         <dd class="col-sm-9">
-            @Html.DisplayFor(model => model.Id)
-        </dd>
-        <dt class="col-sm-3">
-            User
-        </dt>
-        <dd class="col-sm-9">
-            <strong>@ViewBag.UserDisplayName</strong>
+            <strong>@(Model.UserName ?? ViewBag.UserDisplayName ?? Model.UserId)</strong>
             <br />
             <code class="small text-muted">@Model.UserId</code>
         </dd>
-        <dt class="col-sm-3">
-            @Html.DisplayNameFor(model => model.WorkstreamId)
-        </dt>
+
+        <dt class="col-sm-3">Workstream ID</dt>
         <dd class="col-sm-9">
             @if (!string.IsNullOrEmpty(Model.WorkstreamId))
             {
@@ -37,9 +31,20 @@
                 <span class="text-muted">Not Set</span>
             }
         </dd>
-        <dt class="col-sm-3">
-            @Html.DisplayNameFor(model => model.AttributesJson)
-        </dt>
+
+        <dt class="col-sm-3">Status</dt>
+        <dd class="col-sm-9">
+            @if (Model.IsActive)
+            {
+                <span class="badge bg-success">Active</span>
+            }
+            else
+            {
+                <span class="badge bg-secondary">Inactive</span>
+            }
+        </dd>
+
+        <dt class="col-sm-3">Attributes JSON</dt>
         <dd class="col-sm-9">
             @if (!string.IsNullOrEmpty(Model.AttributesJson))
             {
@@ -50,17 +55,29 @@
                 <span class="text-muted">No Attributes</span>
             }
         </dd>
-        <dt class="col-sm-3">
-            @Html.DisplayNameFor(model => model.CreatedAt)
-        </dt>
+
+        <dt class="col-sm-3">Created At</dt>
         <dd class="col-sm-9">
-            @Html.DisplayFor(model => model.CreatedAt)
+            @if (Model.CreatedAt.HasValue)
+            {
+                @Model.CreatedAt.Value.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss")
+            }
+            else
+            {
+                <span class="text-muted">Not available</span>
+            }
         </dd>
-        <dt class="col-sm-3">
-            @Html.DisplayNameFor(model => model.ModifiedAt)
-        </dt>
+
+        <dt class="col-sm-3">Modified At</dt>
         <dd class="col-sm-9">
-            @Html.DisplayFor(model => model.ModifiedAt)
+            @if (Model.ModifiedAt.HasValue)
+            {
+                @Model.ModifiedAt.Value.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss")
+            }
+            else
+            {
+                <span class="text-muted">Not modified</span>
+            }
         </dd>
     </dl>
 </div>

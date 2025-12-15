@@ -549,28 +549,28 @@ public class SeedDataService(AccessControlDbContext context)
             // Loans workstream roles
             new CasbinRole
             {
-                RoleName = "Loans.Officer",
+                RoleName = "loans_officer",
                 WorkstreamId = "loans",
                 DisplayName = "Loan Officer",
                 Description = "Can create and view loan applications"
             },
             new CasbinRole
             {
-                RoleName = "Loans.Approver",
+                RoleName = "loans_approver",
                 WorkstreamId = "loans",
                 DisplayName = "Loan Approver",
                 Description = "Can approve/reject loans based on ABAC rules (approval limit, region)"
             },
             new CasbinRole
             {
-                RoleName = "Loans.SeniorApprover",
+                RoleName = "loans_seniorapprover",
                 WorkstreamId = "loans",
                 DisplayName = "Senior Loan Approver",
                 Description = "Can approve high-value loans (inherits from Approver)"
             },
             new CasbinRole
             {
-                RoleName = "Loans.Disbursement",
+                RoleName = "loans_disbursement",
                 WorkstreamId = "loans",
                 DisplayName = "Loan Disbursement Officer",
                 Description = "Can disburse approved loans"
@@ -579,21 +579,21 @@ public class SeedDataService(AccessControlDbContext context)
             // Claims workstream roles
             new CasbinRole
             {
-                RoleName = "Claims.Adjudicator",
+                RoleName = "claims_adjudicator",
                 WorkstreamId = "claims",
                 DisplayName = "Claims Adjudicator",
                 Description = "Can adjudicate insurance claims"
             },
             new CasbinRole
             {
-                RoleName = "Claims.SeniorAdjudicator",
+                RoleName = "claims_senioradjudicator",
                 WorkstreamId = "claims",
                 DisplayName = "Senior Claims Adjudicator",
                 Description = "Can adjudicate high-value claims"
             },
             new CasbinRole
             {
-                RoleName = "Claims.PaymentProcessor",
+                RoleName = "claims_paymentprocessor",
                 WorkstreamId = "claims",
                 DisplayName = "Claims Payment Processor",
                 Description = "Can issue claim payments"
@@ -602,21 +602,21 @@ public class SeedDataService(AccessControlDbContext context)
             // Documents workstream roles
             new CasbinRole
             {
-                RoleName = "Documents.Viewer",
+                RoleName = "documents_viewer",
                 WorkstreamId = "documents",
                 DisplayName = "Document Viewer",
                 Description = "Can view documents in their department"
             },
             new CasbinRole
             {
-                RoleName = "Documents.Uploader",
+                RoleName = "documents_uploader",
                 WorkstreamId = "documents",
                 DisplayName = "Document Uploader",
                 Description = "Can upload and view documents"
             },
             new CasbinRole
             {
-                RoleName = "Documents.Manager",
+                RoleName = "documents_manager",
                 WorkstreamId = "documents",
                 DisplayName = "Document Manager",
                 Description = "Can manage documents including confidential ones"
@@ -639,26 +639,26 @@ public class SeedDataService(AccessControlDbContext context)
         var groupMappings = new[]
         {
             // Loans Groups → Roles
-            new CasbinPolicy { PolicyType = "g", V0 = LOANS_OFFICERS, V1 = "Loans.Officer", V2 = "loans", WorkstreamId = "loans" },
-            new CasbinPolicy { PolicyType = "g", V0 = LOANS_APPROVERS, V1 = "Loans.Approver", V2 = "loans", WorkstreamId = "loans" },
-            new CasbinPolicy { PolicyType = "g", V0 = LOANS_SENIOR_APPROVERS, V1 = "Loans.SeniorApprover", V2 = "loans", WorkstreamId = "loans" },
-            new CasbinPolicy { PolicyType = "g", V0 = LOANS_DISBURSEMENT, V1 = "Loans.Disbursement", V2 = "loans", WorkstreamId = "loans" },
+            new CasbinPolicy { PolicyType = "g", V0 = LOANS_OFFICERS, V1 = "loans_officer", V2 = "loans", WorkstreamId = "loans" },
+            new CasbinPolicy { PolicyType = "g", V0 = LOANS_APPROVERS, V1 = "loans_approver", V2 = "loans", WorkstreamId = "loans" },
+            new CasbinPolicy { PolicyType = "g", V0 = LOANS_SENIOR_APPROVERS, V1 = "loans_seniorapprover", V2 = "loans", WorkstreamId = "loans" },
+            new CasbinPolicy { PolicyType = "g", V0 = LOANS_DISBURSEMENT, V1 = "loans_disbursement", V2 = "loans", WorkstreamId = "loans" },
 
             // Claims Groups → Roles
-            new CasbinPolicy { PolicyType = "g", V0 = CLAIMS_ADJUDICATORS, V1 = "Claims.Adjudicator", V2 = "claims", WorkstreamId = "claims" },
-            new CasbinPolicy { PolicyType = "g", V0 = CLAIMS_SENIOR_ADJUDICATORS, V1 = "Claims.SeniorAdjudicator", V2 = "claims", WorkstreamId = "claims" },
-            new CasbinPolicy { PolicyType = "g", V0 = CLAIMS_PAYMENT_PROCESSORS, V1 = "Claims.PaymentProcessor", V2 = "claims", WorkstreamId = "claims" },
+            new CasbinPolicy { PolicyType = "g", V0 = CLAIMS_ADJUDICATORS, V1 = "claims_adjudicator", V2 = "claims", WorkstreamId = "claims" },
+            new CasbinPolicy { PolicyType = "g", V0 = CLAIMS_SENIOR_ADJUDICATORS, V1 = "claims_senioradjudicator", V2 = "claims", WorkstreamId = "claims" },
+            new CasbinPolicy { PolicyType = "g", V0 = CLAIMS_PAYMENT_PROCESSORS, V1 = "claims_paymentprocessor", V2 = "claims", WorkstreamId = "claims" },
 
             // Documents Groups → Roles
-            new CasbinPolicy { PolicyType = "g", V0 = DOCUMENTS_VIEWERS, V1 = "Documents.Viewer", V2 = "documents", WorkstreamId = "documents" },
-            new CasbinPolicy { PolicyType = "g", V0 = DOCUMENTS_UPLOADERS, V1 = "Documents.Uploader", V2 = "documents", WorkstreamId = "documents" },
-            new CasbinPolicy { PolicyType = "g", V0 = DOCUMENTS_MANAGERS, V1 = "Documents.Manager", V2 = "documents", WorkstreamId = "documents" },
+            new CasbinPolicy { PolicyType = "g", V0 = DOCUMENTS_VIEWERS, V1 = "documents_viewer", V2 = "documents", WorkstreamId = "documents" },
+            new CasbinPolicy { PolicyType = "g", V0 = DOCUMENTS_UPLOADERS, V1 = "documents_uploader", V2 = "documents", WorkstreamId = "documents" },
+            new CasbinPolicy { PolicyType = "g", V0 = DOCUMENTS_MANAGERS, V1 = "documents_manager", V2 = "documents", WorkstreamId = "documents" },
 
             // Role inheritance
-            new CasbinPolicy { PolicyType = "g", V0 = "Loans.SeniorApprover", V1 = "Loans.Approver", V2 = "loans", WorkstreamId = "loans" },
-            new CasbinPolicy { PolicyType = "g", V0 = "Claims.SeniorAdjudicator", V1 = "Claims.Adjudicator", V2 = "claims", WorkstreamId = "claims" },
-            new CasbinPolicy { PolicyType = "g", V0 = "Documents.Uploader", V1 = "Documents.Viewer", V2 = "documents", WorkstreamId = "documents" },
-            new CasbinPolicy { PolicyType = "g", V0 = "Documents.Manager", V1 = "Documents.Uploader", V2 = "documents", WorkstreamId = "documents" }
+            new CasbinPolicy { PolicyType = "g", V0 = "loans_seniorapprover", V1 = "loans_approver", V2 = "loans", WorkstreamId = "loans" },
+            new CasbinPolicy { PolicyType = "g", V0 = "claims_senioradjudicator", V1 = "claims_adjudicator", V2 = "claims", WorkstreamId = "claims" },
+            new CasbinPolicy { PolicyType = "g", V0 = "documents_uploader", V1 = "documents_viewer", V2 = "documents", WorkstreamId = "documents" },
+            new CasbinPolicy { PolicyType = "g", V0 = "documents_manager", V1 = "documents_uploader", V2 = "documents", WorkstreamId = "documents" }
         };
 
         foreach (var mapping in groupMappings)
@@ -691,20 +691,20 @@ public class SeedDataService(AccessControlDbContext context)
         policies.AddRange(new[]
         {
             // Loan Officers: create, list, read
-            new CasbinPolicy { PolicyType = "p", V0 = "Loans.Officer", V1 = "loans", V2 = "Loan", V3 = "create", V4 = "allow", WorkstreamId = "loans" },
-            new CasbinPolicy { PolicyType = "p", V0 = "Loans.Officer", V1 = "loans", V2 = "Loan", V3 = "list", V4 = "allow", WorkstreamId = "loans" },
-            new CasbinPolicy { PolicyType = "p", V0 = "Loans.Officer", V1 = "loans", V2 = "Loan/*", V3 = "read", V4 = "allow", WorkstreamId = "loans" },
-            new CasbinPolicy { PolicyType = "p", V0 = "Loans.Officer", V1 = "loans", V2 = "Loan/*", V3 = "write", V4 = "allow", WorkstreamId = "loans" },
+            new CasbinPolicy { PolicyType = "p", V0 = "loans_officer", V1 = "loans", V2 = "Loan", V3 = "create", V4 = "allow", WorkstreamId = "loans" },
+            new CasbinPolicy { PolicyType = "p", V0 = "loans_officer", V1 = "loans", V2 = "Loan", V3 = "list", V4 = "allow", WorkstreamId = "loans" },
+            new CasbinPolicy { PolicyType = "p", V0 = "loans_officer", V1 = "loans", V2 = "Loan/*", V3 = "read", V4 = "allow", WorkstreamId = "loans" },
+            new CasbinPolicy { PolicyType = "p", V0 = "loans_officer", V1 = "loans", V2 = "Loan/*", V3 = "write", V4 = "allow", WorkstreamId = "loans" },
 
             // Loan Approvers: read, approve, reject (ABAC checks approval limit)
-            new CasbinPolicy { PolicyType = "p", V0 = "Loans.Approver", V1 = "loans", V2 = "Loan", V3 = "list", V4 = "allow", WorkstreamId = "loans" },
-            new CasbinPolicy { PolicyType = "p", V0 = "Loans.Approver", V1 = "loans", V2 = "Loan/*", V3 = "read", V4 = "allow", WorkstreamId = "loans" },
-            new CasbinPolicy { PolicyType = "p", V0 = "Loans.Approver", V1 = "loans", V2 = "Loan/*", V3 = "approve", V4 = "allow", WorkstreamId = "loans" },
-            new CasbinPolicy { PolicyType = "p", V0 = "Loans.Approver", V1 = "loans", V2 = "Loan/*", V3 = "reject", V4 = "allow", WorkstreamId = "loans" },
+            new CasbinPolicy { PolicyType = "p", V0 = "loans_approver", V1 = "loans", V2 = "Loan", V3 = "list", V4 = "allow", WorkstreamId = "loans" },
+            new CasbinPolicy { PolicyType = "p", V0 = "loans_approver", V1 = "loans", V2 = "Loan/*", V3 = "read", V4 = "allow", WorkstreamId = "loans" },
+            new CasbinPolicy { PolicyType = "p", V0 = "loans_approver", V1 = "loans", V2 = "Loan/*", V3 = "approve", V4 = "allow", WorkstreamId = "loans" },
+            new CasbinPolicy { PolicyType = "p", V0 = "loans_approver", V1 = "loans", V2 = "Loan/*", V3 = "reject", V4 = "allow", WorkstreamId = "loans" },
 
             // Disbursement: read, disburse
-            new CasbinPolicy { PolicyType = "p", V0 = "Loans.Disbursement", V1 = "loans", V2 = "Loan/*", V3 = "read", V4 = "allow", WorkstreamId = "loans" },
-            new CasbinPolicy { PolicyType = "p", V0 = "Loans.Disbursement", V1 = "loans", V2 = "Loan/*", V3 = "disburse", V4 = "allow", WorkstreamId = "loans" }
+            new CasbinPolicy { PolicyType = "p", V0 = "loans_disbursement", V1 = "loans", V2 = "Loan/*", V3 = "read", V4 = "allow", WorkstreamId = "loans" },
+            new CasbinPolicy { PolicyType = "p", V0 = "loans_disbursement", V1 = "loans", V2 = "Loan/*", V3 = "disburse", V4 = "allow", WorkstreamId = "loans" }
         });
 
         // ═══════════════════════════════════════════════════════════════════════════
@@ -715,14 +715,14 @@ public class SeedDataService(AccessControlDbContext context)
         policies.AddRange(new[]
         {
             // Claims Adjudicators: create, list, read, adjudicate
-            new CasbinPolicy { PolicyType = "p", V0 = "Claims.Adjudicator", V1 = "claims", V2 = "Claim", V3 = "create", V4 = "allow", WorkstreamId = "claims" },
-            new CasbinPolicy { PolicyType = "p", V0 = "Claims.Adjudicator", V1 = "claims", V2 = "Claim", V3 = "list", V4 = "allow", WorkstreamId = "claims" },
-            new CasbinPolicy { PolicyType = "p", V0 = "Claims.Adjudicator", V1 = "claims", V2 = "Claim/*", V3 = "read", V4 = "allow", WorkstreamId = "claims" },
-            new CasbinPolicy { PolicyType = "p", V0 = "Claims.Adjudicator", V1 = "claims", V2 = "Claim/*", V3 = "adjudicate", V4 = "allow", WorkstreamId = "claims" },
+            new CasbinPolicy { PolicyType = "p", V0 = "claims_adjudicator", V1 = "claims", V2 = "Claim", V3 = "create", V4 = "allow", WorkstreamId = "claims" },
+            new CasbinPolicy { PolicyType = "p", V0 = "claims_adjudicator", V1 = "claims", V2 = "Claim", V3 = "list", V4 = "allow", WorkstreamId = "claims" },
+            new CasbinPolicy { PolicyType = "p", V0 = "claims_adjudicator", V1 = "claims", V2 = "Claim/*", V3 = "read", V4 = "allow", WorkstreamId = "claims" },
+            new CasbinPolicy { PolicyType = "p", V0 = "claims_adjudicator", V1 = "claims", V2 = "Claim/*", V3 = "adjudicate", V4 = "allow", WorkstreamId = "claims" },
 
             // Payment Processors: read, pay
-            new CasbinPolicy { PolicyType = "p", V0 = "Claims.PaymentProcessor", V1 = "claims", V2 = "Claim/*", V3 = "read", V4 = "allow", WorkstreamId = "claims" },
-            new CasbinPolicy { PolicyType = "p", V0 = "Claims.PaymentProcessor", V1 = "claims", V2 = "Claim/*", V3 = "pay", V4 = "allow", WorkstreamId = "claims" }
+            new CasbinPolicy { PolicyType = "p", V0 = "claims_paymentprocessor", V1 = "claims", V2 = "Claim/*", V3 = "read", V4 = "allow", WorkstreamId = "claims" },
+            new CasbinPolicy { PolicyType = "p", V0 = "claims_paymentprocessor", V1 = "claims", V2 = "Claim/*", V3 = "pay", V4 = "allow", WorkstreamId = "claims" }
         });
 
         // ═══════════════════════════════════════════════════════════════════════════
@@ -733,16 +733,16 @@ public class SeedDataService(AccessControlDbContext context)
         policies.AddRange(new[]
         {
             // Document Viewers: list, read
-            new CasbinPolicy { PolicyType = "p", V0 = "Documents.Viewer", V1 = "documents", V2 = "Document", V3 = "list", V4 = "allow", WorkstreamId = "documents" },
-            new CasbinPolicy { PolicyType = "p", V0 = "Documents.Viewer", V1 = "documents", V2 = "Document/*", V3 = "read", V4 = "allow", WorkstreamId = "documents" },
+            new CasbinPolicy { PolicyType = "p", V0 = "documents_viewer", V1 = "documents", V2 = "Document", V3 = "list", V4 = "allow", WorkstreamId = "documents" },
+            new CasbinPolicy { PolicyType = "p", V0 = "documents_viewer", V1 = "documents", V2 = "Document/*", V3 = "read", V4 = "allow", WorkstreamId = "documents" },
 
             // Document Uploaders: upload
-            new CasbinPolicy { PolicyType = "p", V0 = "Documents.Uploader", V1 = "documents", V2 = "Document", V3 = "upload", V4 = "allow", WorkstreamId = "documents" },
+            new CasbinPolicy { PolicyType = "p", V0 = "documents_uploader", V1 = "documents", V2 = "Document", V3 = "upload", V4 = "allow", WorkstreamId = "documents" },
 
             // Document Managers: update, delete, download
-            new CasbinPolicy { PolicyType = "p", V0 = "Documents.Manager", V1 = "documents", V2 = "Document/*", V3 = "update", V4 = "allow", WorkstreamId = "documents" },
-            new CasbinPolicy { PolicyType = "p", V0 = "Documents.Manager", V1 = "documents", V2 = "Document/*", V3 = "delete", V4 = "allow", WorkstreamId = "documents" },
-            new CasbinPolicy { PolicyType = "p", V0 = "Documents.Manager", V1 = "documents", V2 = "Document/*", V3 = "download", V4 = "allow", WorkstreamId = "documents" }
+            new CasbinPolicy { PolicyType = "p", V0 = "documents_manager", V1 = "documents", V2 = "Document/*", V3 = "update", V4 = "allow", WorkstreamId = "documents" },
+            new CasbinPolicy { PolicyType = "p", V0 = "documents_manager", V1 = "documents", V2 = "Document/*", V3 = "delete", V4 = "allow", WorkstreamId = "documents" },
+            new CasbinPolicy { PolicyType = "p", V0 = "documents_manager", V1 = "documents", V2 = "Document/*", V3 = "download", V4 = "allow", WorkstreamId = "documents" }
         });
 
         _context.CasbinPolicies.AddRange(policies);
@@ -789,18 +789,24 @@ public class SeedDataService(AccessControlDbContext context)
             new() {
                 UserId = ALICE_ID,
                 WorkstreamId = "global",
+                UserName = "Alice",
+                IsActive = true,
                 AttributesJson = createGlobalAttrs("Senior Loan Officer", "Lending"),
                 CreatedAt = DateTimeOffset.UtcNow
             },
             new() {
                 UserId = BOB_ID,
                 WorkstreamId = "global",
+                UserName = "Bob",
+                IsActive = true,
                 AttributesJson = createGlobalAttrs("Loan Approver", "Lending"),
                 CreatedAt = DateTimeOffset.UtcNow
             },
             new() {
                 UserId = CAROL_ID,
                 WorkstreamId = "global",
+                UserName = "Carol",
+                IsActive = true,
                 AttributesJson = createGlobalAttrs("Junior Loan Officer", "Lending"),
                 CreatedAt = DateTimeOffset.UtcNow
             },
@@ -811,6 +817,8 @@ public class SeedDataService(AccessControlDbContext context)
             new() {
                 UserId = ALICE_ID,
                 WorkstreamId = "loans",
+                UserName = "Alice",
+                IsActive = true,
                 AttributesJson = createAttrs("Lending", "US-WEST", 200000m, 3, "CC-WEST-001"),
                 CreatedAt = DateTimeOffset.UtcNow
             },
@@ -821,12 +829,16 @@ public class SeedDataService(AccessControlDbContext context)
             new() {
                 UserId = BOB_ID,
                 WorkstreamId = "loans",
+                UserName = "Bob",
+                IsActive = true,
                 AttributesJson = createAttrs("Lending", "US-EAST", 75000m, 2, "CC-EAST-002"),
                 CreatedAt = DateTimeOffset.UtcNow
             },
             new() {
                 UserId = BOB_ID,
                 WorkstreamId = "claims",
+                UserName = "Bob",
+                IsActive = true,
                 AttributesJson = createAttrs("Claims", "US-EAST", 50000m, 2, "CC-EAST-003"),
                 CreatedAt = DateTimeOffset.UtcNow
             },
@@ -837,12 +849,16 @@ public class SeedDataService(AccessControlDbContext context)
             new() {
                 UserId = CAROL_ID,
                 WorkstreamId = "loans",
+                UserName = "Carol",
+                IsActive = true,
                 AttributesJson = createAttrs("Lending", "US-WEST", 0m, 1, "CC-WEST-004"),
                 CreatedAt = DateTimeOffset.UtcNow
             },
             new() {
                 UserId = CAROL_ID,
                 WorkstreamId = "documents",
+                UserName = "Carol",
+                IsActive = true,
                 AttributesJson = createAttrs("Legal", "US-WEST", 0m, 1, "CC-WEST-005"),
                 CreatedAt = DateTimeOffset.UtcNow
             }
@@ -880,46 +896,41 @@ public class SeedDataService(AccessControlDbContext context)
             // These are used when a user doesn't have explicit JobTitle/Department attributes
             // ═══════════════════════════════════════════════════════════════════════════
             new() {
-                AppRoleId = "loans-officer-role",
-                RoleValue = "Loans.Officer",
+                RoleId = "loans_officer",
                 WorkstreamId = "global",
-                RoleDisplayName = "Loan Officer",
+                RoleName = "Loan Officer",
                 IsActive = true,
                 AttributesJson = createGlobalRoleAttrs("Loan Officer", "Lending"),
                 CreatedAt = DateTimeOffset.UtcNow
             },
             new() {
-                AppRoleId = "loans-approver-role",
-                RoleValue = "Loans.Approver",
+                RoleId = "loans_approver",
                 WorkstreamId = "global",
-                RoleDisplayName = "Loan Approver",
+                RoleName = "Loan Approver",
                 IsActive = true,
                 AttributesJson = createGlobalRoleAttrs("Loan Approver", "Lending"),
                 CreatedAt = DateTimeOffset.UtcNow
             },
             new() {
-                AppRoleId = "loans-senior-approver-role",
-                RoleValue = "Loans.SeniorApprover",
+                RoleId = "loans_seniorapprover",
                 WorkstreamId = "global",
-                RoleDisplayName = "Senior Loan Approver",
+                RoleName = "Senior Loan Approver",
                 IsActive = true,
                 AttributesJson = createGlobalRoleAttrs("Senior Loan Approver", "Lending"),
                 CreatedAt = DateTimeOffset.UtcNow
             },
             new() {
-                AppRoleId = "claims-adjudicator-role",
-                RoleValue = "Claims.Adjudicator",
+                RoleId = "claims_adjudicator",
                 WorkstreamId = "global",
-                RoleDisplayName = "Claims Adjudicator",
+                RoleName = "Claims Adjudicator",
                 IsActive = true,
                 AttributesJson = createGlobalRoleAttrs("Claims Adjudicator", "Claims"),
                 CreatedAt = DateTimeOffset.UtcNow
             },
             new() {
-                AppRoleId = "documents-viewer-role",
-                RoleValue = "Documents.Viewer",
+                RoleId = "documents_viewer",
                 WorkstreamId = "global",
-                RoleDisplayName = "Documents Viewer",
+                RoleName = "Documents Viewer",
                 IsActive = true,
                 AttributesJson = createGlobalRoleAttrs("Documents Viewer", "Documents"),
                 CreatedAt = DateTimeOffset.UtcNow
@@ -929,7 +940,7 @@ public class SeedDataService(AccessControlDbContext context)
         foreach (var attr in roleAttributes)
         {
             _context.RoleAttributes.Add(attr);
-            Console.WriteLine($"  ✓ {attr.RoleValue} → {attr.WorkstreamId} workstream");
+            Console.WriteLine($"  ✓ {attr.RoleId} → {attr.WorkstreamId} workstream");
         }
 
         return Task.CompletedTask;

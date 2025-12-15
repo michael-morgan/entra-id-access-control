@@ -20,9 +20,13 @@ namespace UI.Modules.AccessControl.Controllers.Authorization;
 /// </summary>
 public class PoliciesController(
     IPolicyManagementService policyManagementService,
+    IGraphGroupService graphGroupService,
+    IGraphUserService graphUserService,
     ILogger<PoliciesController> logger) : Controller
 {
     private readonly IPolicyManagementService _policyManagementService = policyManagementService;
+    private readonly IGraphGroupService _graphGroupService = graphGroupService;
+    private readonly IGraphUserService _graphUserService = graphUserService;
     private readonly ILogger<PoliciesController> _logger = logger;
 
     // GET: Policies
@@ -76,10 +80,16 @@ public class PoliciesController(
         // Load available workstreams
         var workstreams = await _policyManagementService.GetAvailableWorkstreamsAsync();
 
+        // Load groups and users for subject dropdown
+        var groups = await _graphGroupService.GetAllGroupsAsync();
+        var users = await _graphUserService.GetAllUsersAsync();
+
         ViewBag.AvailableRoles = roleNames;
         ViewBag.AvailableResources = resources;
         ViewBag.AvailableWorkstreams = workstreams;
         ViewBag.SelectedWorkstream = selectedWorkstream;
+        ViewBag.Groups = groups;
+        ViewBag.Users = users;
 
         return View();
     }
@@ -138,10 +148,16 @@ public class PoliciesController(
         // Load available workstreams
         var workstreams = await _policyManagementService.GetAvailableWorkstreamsAsync();
 
+        // Load groups and users for subject dropdown
+        var groups = await _graphGroupService.GetAllGroupsAsync();
+        var users = await _graphUserService.GetAllUsersAsync();
+
         ViewBag.AvailableRoles = roleNames;
         ViewBag.AvailableResources = resources;
         ViewBag.AvailableWorkstreams = workstreams;
         ViewBag.SelectedWorkstream = selectedWorkstream;
+        ViewBag.Groups = groups;
+        ViewBag.Users = users;
 
         var model = new PolicyViewModel
         {
@@ -231,6 +247,11 @@ public class PoliciesController(
         if (success)
         {
             _logger.LogWarning("Deleted policy {Id}", id);
+            TempData["SuccessMessage"] = "Policy deleted successfully.";
+        }
+        else
+        {
+            TempData["ErrorMessage"] = "Failed to delete policy.";
         }
 
         return RedirectToAction(nameof(Index));

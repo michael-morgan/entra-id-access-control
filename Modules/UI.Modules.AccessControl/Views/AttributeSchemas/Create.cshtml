@@ -7,7 +7,7 @@
 <div class="row mb-3">
     <div class="col-md-12">
         <h2>@ViewData["Title"]</h2>
-        <p class="lead">Define a new attribute schema for users, groups, or roles.</p>
+        <p class="lead">Define a new attribute schema for groups, users, roles, or resources.</p>
     </div>
 </div>
 
@@ -33,12 +33,13 @@
                         <label asp-for="AttributeLevel" class="control-label"></label>
                         <select asp-for="AttributeLevel" class="form-control">
                             <option value="">-- Select Level --</option>
-                            <option value="User">User</option>
                             <option value="Group">Group</option>
+                            <option value="User">User</option>
                             <option value="Role">Role</option>
+                            <option value="Resource">Resource</option>
                         </select>
                         <span asp-validation-for="AttributeLevel" class="text-danger"></span>
-                        <small class="form-text text-muted">The entity type this attribute applies to</small>
+                        <small class="form-text text-muted">Group/User/Role: database attributes | Resource: entity properties passed</small>
                     </div>
 
                     <div class="form-group mb-3">

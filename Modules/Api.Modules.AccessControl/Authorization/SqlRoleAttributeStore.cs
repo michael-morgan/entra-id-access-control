@@ -21,12 +21,12 @@ public class SqlRoleAttributeStore(
     private readonly ILogger<SqlRoleAttributeStore> _logger = logger;
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(15);
 
-    public async Task<RoleAttributes?> GetAttributesByAppRoleIdAsync(
-        string appRoleId,
+    public async Task<RoleAttributes?> GetAttributesByRoleIdAsync(
+        string roleId,
         string workstreamId,
         CancellationToken cancellationToken = default)
     {
-        var cacheKey = $"RoleAttributes:AppRoleId:{appRoleId}:{workstreamId}";
+        var cacheKey = $"RoleAttributes:RoleId:{roleId}:{workstreamId}";
 
         if (_cache.TryGetValue<RoleAttributes>(cacheKey, out var cached))
         {
@@ -35,11 +35,11 @@ public class SqlRoleAttributeStore(
 
         var entity = await _context.RoleAttributes
             .AsNoTracking()
-            .FirstOrDefaultAsync(r => r.AppRoleId == appRoleId && r.WorkstreamId == workstreamId && r.IsActive, cancellationToken);
+            .FirstOrDefaultAsync(r => r.RoleId == roleId && r.WorkstreamId == workstreamId && r.IsActive, cancellationToken);
 
         if (entity == null)
         {
-            _logger.LogDebug("Role attributes not found for app role ID {AppRoleId} in workstream {WorkstreamId}", appRoleId, workstreamId);
+            _logger.LogDebug("Role attributes not found for role ID {RoleId} in workstream {WorkstreamId}", roleId, workstreamId);
             return null;
         }
 
@@ -49,79 +49,45 @@ public class SqlRoleAttributeStore(
         return attributes;
     }
 
-    public async Task<RoleAttributes?> GetAttributesByRoleValueAsync(
-        string roleValue,
-        string workstreamId,
-        CancellationToken cancellationToken = default)
-    {
-        var cacheKey = $"RoleAttributes:RoleValue:{roleValue}:{workstreamId}";
-
-        if (_cache.TryGetValue<RoleAttributes>(cacheKey, out var cached))
-        {
-            return cached;
-        }
-
-        var entity = await _context.RoleAttributes
-            .AsNoTracking()
-            .FirstOrDefaultAsync(r => r.RoleValue == roleValue && r.WorkstreamId == workstreamId && r.IsActive, cancellationToken);
-
-        if (entity == null)
-        {
-            _logger.LogDebug("Role attributes not found for role value {RoleValue} in workstream {WorkstreamId}", roleValue, workstreamId);
-            return null;
-        }
-
-        var attributes = MapToModel(entity);
-        _cache.Set(cacheKey, attributes, CacheDuration);
-
-        // Also cache by AppRoleId
-        var appRoleIdKey = $"RoleAttributes:AppRoleId:{entity.AppRoleId}:{workstreamId}";
-        _cache.Set(appRoleIdKey, attributes, CacheDuration);
-
-        return attributes;
-    }
-
-    public async Task<IDictionary<string, RoleAttributes>> GetAttributesByRoleValuesAsync(
-        IEnumerable<string> roleValues,
+    public async Task<IDictionary<string, RoleAttributes>> GetAttributesByRoleIdsAsync(
+        IEnumerable<string> roleIds,
         string workstreamId,
         CancellationToken cancellationToken = default)
     {
         var result = new Dictionary<string, RoleAttributes>();
-        var uncachedValues = new List<string>();
+        var uncachedIds = new List<string>();
 
         // Check cache first
-        foreach (var roleValue in roleValues)
+        foreach (var roleId in roleIds)
         {
-            var cacheKey = $"RoleAttributes:RoleValue:{roleValue}:{workstreamId}";
+            var cacheKey = $"RoleAttributes:RoleId:{roleId}:{workstreamId}";
             if (_cache.TryGetValue<RoleAttributes>(cacheKey, out var cached) && cached != null)
             {
-                result[roleValue] = cached;
+                result[roleId] = cached;
             }
             else
             {
-                uncachedValues.Add(roleValue);
+                uncachedIds.Add(roleId);
             }
         }
 
         // Fetch uncached from database
-        if (uncachedValues.Count > 0)
+        if (uncachedIds.Count > 0)
         {
             var entities = await _context.RoleAttributes
                 .AsNoTracking()
-                .Where(r => uncachedValues.Contains(r.RoleValue) && r.WorkstreamId == workstreamId && r.IsActive)
+                .Where(r => uncachedIds.Contains(r.RoleId) && r.WorkstreamId == workstreamId && r.IsActive)
                 .ToListAsync(cancellationToken);
 
             foreach (var entity in entities)
             {
                 var attributes = MapToModel(entity);
 
-                var roleValueKey = $"RoleAttributes:RoleValue:{entity.RoleValue}:{workstreamId}";
-                var appRoleIdKey = $"RoleAttributes:AppRoleId:{entity.AppRoleId}:{workstreamId}";
+                var roleIdKey = $"RoleAttributes:RoleId:{entity.RoleId}:{workstreamId}";
 
-                _cache.Set(roleValueKey, attributes, CacheDuration);
-                _cache.Set(appRoleIdKey, attributes, CacheDuration);
+                _cache.Set(roleIdKey, attributes, CacheDuration);
 
-                result[entity.RoleValue] = attributes;
+                result[entity.RoleId] = attributes;
             }
         }
 
@@ -133,46 +99,42 @@ public class SqlRoleAttributeStore(
         CancellationToken cancellationToken = default)
     {
         var entity = await _context.RoleAttributes
-            .FirstOrDefaultAsync(r => r.AppRoleId == attributes.AppRoleId && r.WorkstreamId == attributes.WorkstreamId, cancellationToken);
+            .FirstOrDefaultAsync(r => r.RoleId == attributes.RoleId && r.WorkstreamId == attributes.WorkstreamId, cancellationToken);
 
         if (entity == null)
         {
             entity = new Persistence.Entities.Authorization.RoleAttribute
             {
-                AppRoleId = attributes.AppRoleId,
+                RoleId = attributes.RoleId,
                 WorkstreamId = attributes.WorkstreamId,
-                RoleValue = attributes.RoleValue,
+                RoleName = attributes.RoleName,
                 CreatedAt = DateTimeOffset.UtcNow
             };
             _context.RoleAttributes.Add(entity);
         }
 
-        entity.RoleValue = attributes.RoleValue;
-        entity.RoleDisplayName = attributes.RoleDisplayName;
+        entity.RoleName = attributes.RoleName;
         entity.AttributesJson = SerializeAttributes(attributes.Attributes);
         entity.ModifiedAt = DateTimeOffset.UtcNow;
 
         await _context.SaveChangesAsync(cancellationToken);
 
         // Invalidate cache
-        var appRoleIdKey = $"RoleAttributes:AppRoleId:{attributes.AppRoleId}:{attributes.WorkstreamId}";
-        var roleValueKey = $"RoleAttributes:RoleValue:{attributes.RoleValue}:{attributes.WorkstreamId}";
-        _cache.Remove(appRoleIdKey);
-        _cache.Remove(roleValueKey);
+        var roleIdKey = $"RoleAttributes:RoleId:{attributes.RoleId}:{attributes.WorkstreamId}";
+        _cache.Remove(roleIdKey);
 
         _logger.LogInformation(
-            "Updated role attributes for {AppRoleId} ({RoleValue}) in workstream {WorkstreamId}",
-            attributes.AppRoleId, attributes.RoleValue, attributes.WorkstreamId);
+            "Updated role attributes for {RoleId} ({RoleName}) in workstream {WorkstreamId}",
+            attributes.RoleId, attributes.RoleName, attributes.WorkstreamId);
     }
 
     private static RoleAttributes MapToModel(Persistence.Entities.Authorization.RoleAttribute entity)
     {
         return new RoleAttributes
         {
-            AppRoleId = entity.AppRoleId,
-            RoleValue = entity.RoleValue,
+            RoleId = entity.RoleId,
             WorkstreamId = entity.WorkstreamId,
-            RoleDisplayName = entity.RoleDisplayName,
+            RoleName = entity.RoleName,
             Attributes = DeserializeAttributes(entity.AttributesJson)
         };
     }

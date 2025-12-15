@@ -55,6 +55,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<Persistence.Repositories.Authorization.IUserRepository, Persistence.Repositories.Authorization.UserRepository>();
         services.AddScoped<Persistence.Repositories.Authorization.IGroupRepository, Persistence.Repositories.Authorization.GroupRepository>();
         services.AddScoped<Persistence.Repositories.Authorization.IUserGroupRepository, Persistence.Repositories.Authorization.UserGroupRepository>();
+        services.AddScoped<Persistence.Repositories.Authorization.ICasbinRoleRepository, Persistence.Repositories.Authorization.CasbinRoleRepository>();
         services.AddScoped<Persistence.Repositories.Attributes.IGroupAttributeRepository, Persistence.Repositories.Attributes.GroupAttributeRepository>();
         services.AddScoped<Persistence.Repositories.Attributes.IUserAttributeRepository, Persistence.Repositories.Attributes.UserAttributeRepository>();
         services.AddScoped<Persistence.Repositories.AbacRules.IAbacRuleGroupRepository, Persistence.Repositories.AbacRules.AbacRuleGroupRepository>();
@@ -109,6 +110,9 @@ public static class ServiceCollectionExtensions
 
         // Policy engine abstraction (decouples from Casbin)
         services.AddScoped<IPolicyEngine, CasbinPolicyEngine>();
+
+        // Role resolution caching (improves performance for repeated role lookups)
+        services.AddSingleton<IRoleResolutionCache, RoleResolutionCache>();
 
         // ABAC evaluation service (replaces Service Locator anti-pattern)
         services.AddScoped<IAbacEvaluationService, AbacEvaluationService>();
@@ -200,6 +204,8 @@ public static class ServiceCollectionExtensions
                 // It's only needed if you enable Graph API feature (for Client Credentials flow)
                 // For JWT validation, we only validate the Tenant ID (issuer) - Audience is disabled
 
+                // Set the authority to automatically fetch signing keys from Entra ID OpenID Connect metadata
+                options.Authority = $"https://login.microsoftonline.com/{tenantId}/v2.0";
                 options.RequireHttpsMetadata = true;
 
                 options.TokenValidationParameters = new TokenValidationParameters
@@ -219,7 +225,7 @@ public static class ServiceCollectionExtensions
                     // By default, ASP.NET Core transforms claim types (e.g., "oid" gets filtered out)
                     // We need the raw "oid" claim for Entra ID user identification
                     NameClaimType = "name",  // Keep "name" as display name
-                    RoleClaimType = "roles"  // Keep "roles" for role claims
+                    RoleClaimType = "roles"  // Roles come from Casbin policies, not JWT claims
                 };
 
                 options.Events = new JwtBearerEvents

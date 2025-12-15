@@ -53,7 +53,7 @@ public class AuditLogService(
                 var users = await _cachedGraphUserService.GetUsersByIdsAsync(userIds);
                 userDisplayNames = users.ToDictionary(
                     kvp => kvp.Key,
-                    kvp => kvp.Value.DisplayName ?? kvp.Value.UserPrincipalName ?? kvp.Key
+                    kvp => kvp.Value.DisplayName ?? kvp.Key
                 );
             }
             catch (Exception ex)

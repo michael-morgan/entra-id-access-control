@@ -11,24 +11,16 @@ public interface IRoleAttributeStore
     /// <summary>
     /// Gets role attributes by app role ID and workstream (with caching).
     /// </summary>
-    Task<RoleAttributes?> GetAttributesByAppRoleIdAsync(
-        string appRoleId,
+    Task<RoleAttributes?> GetAttributesByRoleIdAsync(
+        string roleId,
         string workstreamId,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets role attributes by role value and workstream (with caching).
+    /// Gets role attributes for multiple role IDs within a workstream (with caching).
     /// </summary>
-    Task<RoleAttributes?> GetAttributesByRoleValueAsync(
-        string roleValue,
-        string workstreamId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets role attributes for multiple role values within a workstream (with caching).
-    /// </summary>
-    Task<IDictionary<string, RoleAttributes>> GetAttributesByRoleValuesAsync(
-        IEnumerable<string> roleValues,
+    Task<IDictionary<string, RoleAttributes>> GetAttributesByRoleIdsAsync(
+        IEnumerable<string> roleIds,
         string workstreamId,
         CancellationToken cancellationToken = default);
 

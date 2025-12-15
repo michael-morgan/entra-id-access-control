@@ -16,6 +16,12 @@ public class AuthorizationTestResult
     public List<AuthorizationStep> EvaluationTrace { get; set; } = [];
 
     public string? MockEntityJson { get; set; }
+
+    /// <summary>
+    /// Formatted diagnostic message explaining why the test failed (for display in UI).
+    /// Includes RBAC and ABAC diagnostics with actionable suggestions.
+    /// </summary>
+    public string? DiagnosticMessage { get; set; }
 }
 
 public class AuthorizationStep

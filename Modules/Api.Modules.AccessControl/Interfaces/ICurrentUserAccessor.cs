@@ -16,14 +16,4 @@ public interface ICurrentUserAccessor
     /// Gets the workstream ID for the current request.
     /// </summary>
     string WorkstreamId { get; }
-
-    /// <summary>
-    /// Gets the regions the user has access to.
-    /// </summary>
-    string[] Regions { get; }
-
-    /// <summary>
-    /// Whether the user has global access (bypasses row-level filters).
-    /// </summary>
-    bool HasGlobalAccess { get; }
 }

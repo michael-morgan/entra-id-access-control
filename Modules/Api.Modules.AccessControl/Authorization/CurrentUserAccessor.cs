@@ -49,13 +49,6 @@ public class CurrentUserAccessor(
             var attributes = _userAttributeStore.GetAttributesAsync(userId, workstreamId)
                 .ConfigureAwait(false).GetAwaiter().GetResult();
 
-            // Extract Region from dynamic attributes
-            string? region = null;
-            if (attributes?.Attributes.TryGetValue("Region", out var regionElement) == true)
-            {
-                region = regionElement.ToString();
-            }
-
             _cachedUser = new CurrentUser
             {
                 Id = userId,
@@ -63,9 +56,7 @@ public class CurrentUserAccessor(
                 Email = email,
                 Type = UserType.User,
                 IpAddress = httpContext.Connection.RemoteIpAddress?.ToString(),
-                WorkstreamId = workstreamId,
-                Regions = region != null ? [region] : [],
-                HasGlobalAccess = region == "ALL"
+                WorkstreamId = workstreamId
             };
 
             return _cachedUser;
@@ -75,8 +66,4 @@ public class CurrentUserAccessor(
     public string WorkstreamId =>
         _correlationContextAccessor.Context?.WorkstreamId
         ?? throw new InvalidOperationException("Workstream context not available");
-
-    public string[] Regions => User.Regions ?? [];
-
-    public bool HasGlobalAccess => User.HasGlobalAccess;
 }

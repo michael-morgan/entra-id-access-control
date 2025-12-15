@@ -18,8 +18,7 @@ public class PolicyRepository(AccessControlDbContext context) : IPolicyRepositor
         string? search = null)
     {
         var query = _context.CasbinPolicies
-            .Where(p => p.WorkstreamId == workstream || p.WorkstreamId == null)
-            .Where(p => p.IsActive);
+            .Where(p => p.WorkstreamId == workstream || p.WorkstreamId == null);
 
         if (!string.IsNullOrWhiteSpace(policyType))
         {
@@ -55,7 +54,6 @@ public class PolicyRepository(AccessControlDbContext context) : IPolicyRepositor
     {
         policy.CreatedAt = DateTimeOffset.UtcNow;
         policy.ModifiedAt = DateTimeOffset.UtcNow;
-        policy.IsActive = true;
 
         _context.CasbinPolicies.Add(policy);
         await _context.SaveChangesAsync();
@@ -96,7 +94,6 @@ public class PolicyRepository(AccessControlDbContext context) : IPolicyRepositor
     {
         return await _context.CasbinPolicies
             .Where(p => p.WorkstreamId == workstream || p.WorkstreamId == null)
-            .Where(p => p.IsActive)
             .Select(p => p.PolicyType)
             .Distinct()
             .OrderBy(pt => pt)
@@ -135,5 +132,24 @@ public class PolicyRepository(AccessControlDbContext context) : IPolicyRepositor
             .ThenBy(p => p.V0)
             .AsNoTracking()
             .ToListAsync();
+    }
+
+    /// <inheritdoc />
+    public async Task<IEnumerable<CasbinPolicy>> GetRolesForSubjectsAsync(
+        IEnumerable<string> subjectIds,
+        string workstream,
+        CancellationToken cancellationToken = default)
+    {
+        var subjectIdsList = subjectIds.ToList();
+
+        return await _context.CasbinPolicies
+            .Where(p => p.IsActive)
+            .Where(p => p.PolicyType == "g")
+            .Where(p => p.V2 == workstream)
+            .Where(p => subjectIdsList.Contains(p.V0!))
+            .OrderBy(p => p.V0)
+            .ThenBy(p => p.V1)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
     }
 }

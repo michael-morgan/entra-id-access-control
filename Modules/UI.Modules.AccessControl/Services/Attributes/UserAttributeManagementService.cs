@@ -62,10 +62,30 @@ public class UserAttributeManagementService(
             return (false, null, "User attributes already exist for this user in this workstream.");
         }
 
+        // Populate UserName from Graph API if not provided
+        string? userName = model.UserName;
+        if (string.IsNullOrEmpty(userName))
+        {
+            try
+            {
+                var users = await _graphUserService.GetUsersByIdsAsync([model.UserId]);
+                if (users.TryGetValue(model.UserId, out var user))
+                {
+                    userName = user.DisplayName ?? model.UserId;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to fetch user display name for {UserId}", model.UserId);
+            }
+        }
+
         var userAttribute = new UserAttribute
         {
             UserId = model.UserId,
             WorkstreamId = workstream,
+            UserName = userName,
+            IsActive = model.IsActive,
             AttributesJson = model.AttributesJson,
             CreatedAt = DateTimeOffset.UtcNow
         };
@@ -84,6 +104,7 @@ public class UserAttributeManagementService(
             return (false, "User attribute not found");
         }
 
+        userAttribute.IsActive = model.IsActive;
         userAttribute.AttributesJson = model.AttributesJson;
         userAttribute.ModifiedAt = DateTimeOffset.UtcNow;
 
@@ -121,7 +142,7 @@ public class UserAttributeManagementService(
             var users = await _graphUserService.GetUsersByIdsAsync(userIds);
             foreach (var kvp in users)
             {
-                displayNames[kvp.Key] = kvp.Value.DisplayName ?? kvp.Value.UserPrincipalName ?? kvp.Key;
+                displayNames[kvp.Key] = kvp.Value.DisplayName ?? kvp.Key;
             }
         }
         catch (Exception ex)

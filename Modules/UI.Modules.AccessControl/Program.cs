@@ -92,6 +92,7 @@ builder.Services.AddScoped<IBusinessEventQueryService, BusinessEventQueryService
 // Add repositories
 builder.Services.AddScoped<Api.Modules.AccessControl.Persistence.Repositories.Authorization.IPolicyRepository, Api.Modules.AccessControl.Persistence.Repositories.Authorization.PolicyRepository>();
 builder.Services.AddScoped<Api.Modules.AccessControl.Persistence.Repositories.Authorization.IRoleRepository, Api.Modules.AccessControl.Persistence.Repositories.Authorization.RoleRepository>();
+builder.Services.AddScoped<Api.Modules.AccessControl.Persistence.Repositories.Authorization.ICasbinRoleRepository, Api.Modules.AccessControl.Persistence.Repositories.Authorization.CasbinRoleRepository>();
 builder.Services.AddScoped<Api.Modules.AccessControl.Persistence.Repositories.Authorization.IResourceRepository, Api.Modules.AccessControl.Persistence.Repositories.Authorization.ResourceRepository>();
 builder.Services.AddScoped<Api.Modules.AccessControl.Persistence.Repositories.Authorization.IUserRepository, Api.Modules.AccessControl.Persistence.Repositories.Authorization.UserRepository>();
 builder.Services.AddScoped<Api.Modules.AccessControl.Persistence.Repositories.Authorization.IGroupRepository, Api.Modules.AccessControl.Persistence.Repositories.Authorization.GroupRepository>();
@@ -149,14 +150,8 @@ var app = builder.Build();
 // Apply pending migrations on startup
 using (var scope = app.Services.CreateScope())
 {
-    var authDbContext = scope.ServiceProvider.GetRequiredService<AccessControlDbContext>();
-    authDbContext.Database.Migrate();
-
-    var eventsDbContext = scope.ServiceProvider.GetRequiredService<AccessControlDbContext>();
-    eventsDbContext.Database.Migrate();
-
-    var auditDbContext = scope.ServiceProvider.GetRequiredService<AccessControlDbContext>();
-    auditDbContext.Database.Migrate();
+    var accessControlDbContext = scope.ServiceProvider.GetRequiredService<AccessControlDbContext>();
+    accessControlDbContext.Database.Migrate();
 }
 
 // Configure the HTTP request pipeline.

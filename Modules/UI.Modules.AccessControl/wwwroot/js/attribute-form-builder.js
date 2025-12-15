@@ -2,10 +2,11 @@
 // Fetches AttributeSchemas from API and builds form-based UI for attribute management
 
 class AttributeFormBuilder {
-    constructor(workstreamId, attributeLevel, containerSelector, hiddenInputSelector) {
+    constructor(workstreamId, attributeLevel, containerSelector, hiddenInputSelector, optionalContainerSelector = null) {
         this.workstreamId = workstreamId;
         this.attributeLevel = attributeLevel;
         this.container = document.querySelector(containerSelector);
+        this.optionalContainer = optionalContainerSelector ? document.querySelector(optionalContainerSelector) : null;
         this.hiddenInput = document.querySelector(hiddenInputSelector);
         this.schemas = [];
         this.attributes = {};
@@ -53,12 +54,39 @@ class AttributeFormBuilder {
             return;
         }
 
-        const formHtml = this.schemas.map(schema => this.renderField(schema)).join('');
-        this.container.innerHTML = `
-            <div class="attribute-form-fields">
-                ${formHtml}
-            </div>
-        `;
+        // Separate required and optional schemas
+        const requiredSchemas = this.schemas.filter(s => s.isRequired);
+        const optionalSchemas = this.schemas.filter(s => !s.isRequired);
+
+        // Render required fields in main container
+        const requiredHtml = requiredSchemas.map(schema => this.renderField(schema)).join('');
+        if (requiredSchemas.length > 0) {
+            this.container.innerHTML = `
+                <div class="attribute-form-fields">
+                    ${requiredHtml}
+                </div>
+            `;
+        } else {
+            this.container.innerHTML = `
+                <div class="alert alert-info">
+                    No required attributes configured.
+                </div>
+            `;
+        }
+
+        // Render optional fields in optional container if provided
+        if (this.optionalContainer && optionalSchemas.length > 0) {
+            const optionalHtml = optionalSchemas.map(schema => this.renderField(schema)).join('');
+            this.optionalContainer.innerHTML = `
+                <div class="attribute-form-fields">
+                    ${optionalHtml}
+                </div>
+            `;
+        } else if (this.optionalContainer) {
+            this.optionalContainer.innerHTML = `
+                <p class="text-muted small">Optional attributes will appear here based on the AttributeSchemas configured for this workstream and attribute level.</p>
+            `;
+        }
     }
 
     renderField(schema) {
@@ -68,59 +96,91 @@ class AttributeFormBuilder {
 
         let inputHtml = '';
 
-        switch (schema.dataType.toLowerCase()) {
-            case 'string':
-                inputHtml = `<input type="text"
-                    class="form-control"
+        // Check if validationRules contains allowedValues
+        let allowedValues = null;
+        if (schema.validationRules) {
+            try {
+                const rules = typeof schema.validationRules === 'string'
+                    ? JSON.parse(schema.validationRules)
+                    : schema.validationRules;
+                allowedValues = rules.allowedValues;
+            } catch (e) {
+                console.warn('Failed to parse validation rules for', schema.attributeName, e);
+            }
+        }
+
+        // If allowedValues exist, render as dropdown regardless of data type
+        if (allowedValues && Array.isArray(allowedValues) && allowedValues.length > 0) {
+            const options = allowedValues.map(val => {
+                const selected = val === value ? 'selected' : '';
+                return `<option value="${this.escapeHtml(val)}" ${selected}>${this.escapeHtml(val)}</option>`;
+            }).join('');
+
+            inputHtml = `
+                <select class="form-select"
                     id="attr_${schema.attributeName}"
                     data-attribute-name="${schema.attributeName}"
-                    value="${this.escapeHtml(value)}"
-                    ${required} />`;
-                break;
+                    ${required}>
+                    <option value="">-- Select a value --</option>
+                    ${options}
+                </select>
+            `;
+        } else {
+            // Render based on data type
+            switch (schema.dataType.toLowerCase()) {
+                case 'string':
+                    inputHtml = `<input type="text"
+                        class="form-control"
+                        id="attr_${schema.attributeName}"
+                        data-attribute-name="${schema.attributeName}"
+                        value="${this.escapeHtml(value)}"
+                        ${required} />`;
+                    break;
 
-            case 'number':
-                inputHtml = `<input type="number"
-                    class="form-control"
-                    id="attr_${schema.attributeName}"
-                    data-attribute-name="${schema.attributeName}"
-                    value="${value}"
-                    ${required} />`;
-                break;
+                case 'number':
+                    inputHtml = `<input type="number"
+                        class="form-control"
+                        id="attr_${schema.attributeName}"
+                        data-attribute-name="${schema.attributeName}"
+                        value="${value}"
+                        ${required} />`;
+                    break;
 
-            case 'boolean':
-                const checked = value === true || value === 'true' ? 'checked' : '';
-                inputHtml = `
-                    <div class="form-check form-switch">
-                        <input type="checkbox"
-                            class="form-check-input"
-                            id="attr_${schema.attributeName}"
-                            data-attribute-name="${schema.attributeName}"
-                            ${checked}
-                            ${required} />
-                        <label class="form-check-label" for="attr_${schema.attributeName}">
-                            ${schema.isRequired ? 'This attribute is required' : 'Enable this attribute'}
-                        </label>
-                    </div>
-                `;
-                break;
+                case 'boolean':
+                    const checked = value === true || value === 'true' ? 'checked' : '';
+                    inputHtml = `
+                        <div class="form-check form-switch">
+                            <input type="checkbox"
+                                class="form-check-input"
+                                id="attr_${schema.attributeName}"
+                                data-attribute-name="${schema.attributeName}"
+                                ${checked}
+                                ${required} />
+                            <label class="form-check-label" for="attr_${schema.attributeName}">
+                                ${schema.isRequired ? 'This attribute is required' : 'Enable this attribute'}
+                            </label>
+                        </div>
+                    `;
+                    break;
 
-            case 'date':
-                const dateValue = value ? new Date(value).toISOString().split('T')[0] : '';
-                inputHtml = `<input type="date"
-                    class="form-control"
-                    id="attr_${schema.attributeName}"
-                    data-attribute-name="${schema.attributeName}"
-                    value="${dateValue}"
-                    ${required} />`;
-                break;
+                case 'date':
+                    const dateValue = value ? new Date(value).toISOString().split('T')[0] : '';
+                    inputHtml = `<input type="date"
+                        class="form-control"
+                        id="attr_${schema.attributeName}"
+                        data-attribute-name="${schema.attributeName}"
+                        value="${dateValue}"
+                        ${required} />`;
+                    break;
 
-            default:
-                inputHtml = `<textarea
-                    class="form-control"
-                    id="attr_${schema.attributeName}"
-                    data-attribute-name="${schema.attributeName}"
-                    rows="3"
-                    ${required}>${this.escapeHtml(value)}</textarea>`;
+                default:
+                    inputHtml = `<textarea
+                        class="form-control"
+                        id="attr_${schema.attributeName}"
+                        data-attribute-name="${schema.attributeName}"
+                        rows="3"
+                        ${required}>${this.escapeHtml(value)}</textarea>`;
+            }
         }
 
         return `
@@ -136,11 +196,21 @@ class AttributeFormBuilder {
     }
 
     attachEventListeners() {
+        // Attach listeners to required fields
         const inputs = this.container.querySelectorAll('[data-attribute-name]');
         inputs.forEach(input => {
             input.addEventListener('change', () => this.updateAttributes());
             input.addEventListener('input', () => this.updateAttributes());
         });
+
+        // Attach listeners to optional fields if container exists
+        if (this.optionalContainer) {
+            const optionalInputs = this.optionalContainer.querySelectorAll('[data-attribute-name]');
+            optionalInputs.forEach(input => {
+                input.addEventListener('change', () => this.updateAttributes());
+                input.addEventListener('input', () => this.updateAttributes());
+            });
+        }
 
         const form = this.container.closest('form');
         if (form) {
@@ -153,10 +223,15 @@ class AttributeFormBuilder {
     }
 
     updateAttributes() {
-        const inputs = this.container.querySelectorAll('[data-attribute-name]');
+        // Collect all inputs from both containers
+        const allInputs = [
+            ...this.container.querySelectorAll('[data-attribute-name]'),
+            ...(this.optionalContainer ? this.optionalContainer.querySelectorAll('[data-attribute-name]') : [])
+        ];
+
         const newAttributes = {};
 
-        inputs.forEach(input => {
+        allInputs.forEach(input => {
             const attrName = input.getAttribute('data-attribute-name');
             const schema = this.schemas.find(s => s.attributeName === attrName);
 
@@ -183,9 +258,14 @@ class AttributeFormBuilder {
 
     validate() {
         let isValid = true;
-        const inputs = this.container.querySelectorAll('[data-attribute-name]');
 
-        inputs.forEach(input => {
+        // Collect all inputs from both containers
+        const allInputs = [
+            ...this.container.querySelectorAll('[data-attribute-name]'),
+            ...(this.optionalContainer ? this.optionalContainer.querySelectorAll('[data-attribute-name]') : [])
+        ];
+
+        allInputs.forEach(input => {
             const attrName = input.getAttribute('data-attribute-name');
             const schema = this.schemas.find(s => s.attributeName === attrName);
 

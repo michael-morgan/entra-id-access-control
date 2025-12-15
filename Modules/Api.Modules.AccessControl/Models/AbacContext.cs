@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Api.Modules.AccessControl.Extensions;
 
 namespace Api.Modules.AccessControl.Models;
@@ -37,8 +38,9 @@ public sealed record AbacContext
     /// Dynamic user attributes loaded from UserAttributes/GroupAttributes/RoleAttributes tables.
     /// Merged with precedence: User > Role > Group.
     /// Examples: ApprovalLimit, ManagementLevel, Department, Region
+    /// Uses case-insensitive key comparison for flexibility across serialization formats.
     /// </summary>
-    public Dictionary<string, object> UserAttributes { get; init; } = [];
+    public Dictionary<string, object> UserAttributes { get; init; } = new(StringComparer.OrdinalIgnoreCase);
 
     // ═══════════════════════════════════════════════════════════
     // DYNAMIC RESOURCE ATTRIBUTES (from entity properties)
@@ -47,8 +49,9 @@ public sealed record AbacContext
     /// <summary>
     /// Dynamic resource attributes extracted from entity via reflection.
     /// Examples: OwnerId, Region, Status, RequestedAmount, Classification
+    /// Uses case-insensitive key comparison for flexibility across serialization formats.
     /// </summary>
-    public Dictionary<string, object> ResourceAttributes { get; init; } = [];
+    public Dictionary<string, object> ResourceAttributes { get; init; } = new(StringComparer.OrdinalIgnoreCase);
 
     // ═══════════════════════════════════════════════════════════
     // ENVIRONMENT ATTRIBUTES (computed at runtime)
@@ -78,4 +81,28 @@ public sealed record AbacContext
 
     /// <summary>Serializes context to JSON for Casbin evaluation</summary>
     public string ToJson() => JsonSerializer.Serialize(this);
+
+    /// <summary>
+    /// Ensures attribute dictionaries are case-insensitive after JSON deserialization.
+    /// Called after deserializing from JSON to restore case-insensitive behavior.
+    /// </summary>
+    public AbacContext EnsureCaseInsensitiveDictionaries()
+    {
+        // If dictionaries are already case-insensitive, return as-is
+        if (UserAttributes.Comparer == StringComparer.OrdinalIgnoreCase &&
+            ResourceAttributes.Comparer == StringComparer.OrdinalIgnoreCase)
+        {
+            return this;
+        }
+
+        // Recreate with case-insensitive comparer
+        var newUserAttributes = new Dictionary<string, object>(UserAttributes, StringComparer.OrdinalIgnoreCase);
+        var newResourceAttributes = new Dictionary<string, object>(ResourceAttributes, StringComparer.OrdinalIgnoreCase);
+
+        return this with
+        {
+            UserAttributes = newUserAttributes,
+            ResourceAttributes = newResourceAttributes
+        };
+    }
 }

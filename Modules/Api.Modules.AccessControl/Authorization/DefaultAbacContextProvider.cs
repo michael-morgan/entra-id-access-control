@@ -13,6 +13,7 @@ public class DefaultAbacContextProvider(
     IUserAttributeStore userAttributeStore,
     IGroupAttributeStore groupAttributeStore,
     IRoleAttributeStore roleAttributeStore,
+    IPolicyEngine policyEngine,
     IHttpContextAccessor httpContextAccessor,
     IAttributeMerger attributeMerger,
     IResourceAttributeExtractor resourceAttributeExtractor,
@@ -21,6 +22,7 @@ public class DefaultAbacContextProvider(
     private readonly IUserAttributeStore _userAttributeStore = userAttributeStore;
     private readonly IGroupAttributeStore _groupAttributeStore = groupAttributeStore;
     private readonly IRoleAttributeStore _roleAttributeStore = roleAttributeStore;
+    private readonly IPolicyEngine _policyEngine = policyEngine;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
     private readonly IAttributeMerger _attributeMerger = attributeMerger;
     private readonly IResourceAttributeExtractor _resourceAttributeExtractor = resourceAttributeExtractor;
@@ -39,14 +41,16 @@ public class DefaultAbacContextProvider(
         var userId = user.FindFirst("http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value
             ?? throw new InvalidOperationException("User ID not found: 'oid' claim (http://schemas.microsoft.com/identity/claims/objectidentifier) is required for Entra ID authentication");
 
-        // Extract roles and groups from JWT claims
-        var roleValues = user.FindAll("roles").Select(c => c.Value).ToArray();
+        // Extract groups from JWT claims (roles now come from Casbin, not JWT)
         var groupIds = user.FindAll("groups").Select(c => c.Value).ToArray();
+
+        // Resolve roles from Casbin policies based on group memberships
+        var roleIds = await ResolveRolesFromGroupsAsync(groupIds, workstreamId);
 
         // Load attributes from database sequentially (DbContext is not thread-safe)
         var userAttributes = await _userAttributeStore.GetAttributesAsync(userId, workstreamId);
         var groupAttributes = await _groupAttributeStore.GetAttributesAsync(groupIds, workstreamId);
-        var roleAttributes = await _roleAttributeStore.GetAttributesByRoleValuesAsync(roleValues, workstreamId);
+        var roleAttributes = await _roleAttributeStore.GetAttributesByRoleIdsAsync(roleIds, workstreamId);
 
         // Merge attributes with precedence: User > Role > Group (delegated to AttributeMerger)
         var mergedAttributes = _attributeMerger.MergeAttributes(groupAttributes, roleAttributes, userAttributes);
@@ -65,7 +69,7 @@ public class DefaultAbacContextProvider(
             UserId = userId,
             UserDisplayName = user.FindFirst("name")?.Value,
             UserEmail = user.FindFirst("email")?.Value,
-            Roles = roleValues,
+            Roles = roleIds,
             Groups = groupIds,
 
             // Dynamic user attributes (merged from User/Role/Group attributes)
@@ -82,6 +86,29 @@ public class DefaultAbacContextProvider(
         };
 
         return context;
+    }
+
+    /// <summary>
+    /// Resolves all roles for the user's groups from Casbin policies.
+    /// Includes both direct and inherited roles (e.g., senior_approver inherits approver).
+    /// Results are cached by the PolicyEngine.
+    /// </summary>
+    private async Task<string[]> ResolveRolesFromGroupsAsync(string[] groupIds, string workstreamId)
+    {
+        if (groupIds.Length == 0)
+            return [];
+
+        var allRoles = new List<string>();
+
+        // Resolve roles for each group
+        foreach (var groupId in groupIds)
+        {
+            var roles = await _policyEngine.GetAllRolesForSubjectAsync(groupId, workstreamId);
+            allRoles.AddRange(roles);
+        }
+
+        // Return distinct roles
+        return allRoles.Distinct().ToArray();
     }
 }
 

@@ -1,4 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
+using Api.Modules.AccessControl.Interfaces;
 using Api.Modules.AccessControl.Persistence.Repositories;
 using Api.Modules.AccessControl.Persistence.Repositories.Authorization;
 using Api.Modules.AccessControl.Persistence.Repositories.Attributes;
@@ -31,7 +32,9 @@ public class ScenarioTestingService(
         var jwtToken = handler.ReadJwtToken(token);
         var userId = jwtToken.Claims.FirstOrDefault(c => c.Type == "oid")?.Value;
         var groups = jwtToken.Claims.Where(c => c.Type == "groups").Select(c => c.Value).ToList();
-        var roles = jwtToken.Claims.Where(c => c.Type == "roles" || c.Type == "role").Select(c => c.Value).ToList();
+
+        // Resolve roles from Casbin policies based on group memberships
+        var roles = await ResolveRolesFromGroupsAsync(groups, workstreamId);
 
         _logger.LogInformation("Generating scenarios for workstream {WorkstreamId} - UserId: {UserId}, Groups: [{Groups}], Roles: [{Roles}]",
             workstreamId, userId, string.Join(", ", groups), string.Join(", ", roles));
@@ -41,24 +44,6 @@ public class ScenarioTestingService(
         if (!string.IsNullOrWhiteSpace(userId)) subjects.Add(userId);
         subjects.AddRange(roles.Where(r => !string.IsNullOrWhiteSpace(r)));
         subjects.AddRange(groups.Where(g => !string.IsNullOrWhiteSpace(g)));
-
-        _logger.LogInformation("Initial subjects: [{Subjects}]", string.Join(", ", subjects));
-
-        // Resolve group-to-role mappings (type "g" policies)
-        var roleMappings = (await _policyRepository.GetBySubjectIdsAsync(subjects, policyType: "g"))
-            .Where(p => p.WorkstreamId == workstreamId || p.WorkstreamId == "*")
-            .ToList();
-
-        var resolvedRoles = roleMappings
-            .Where(g => !string.IsNullOrWhiteSpace(g.V1))
-            .Select(g => g.V1!)
-            .Distinct()
-            .ToList();
-
-        _logger.LogInformation("Resolved {Count} roles from group mappings: [{Roles}]", resolvedRoles.Count, string.Join(", ", resolvedRoles));
-
-        // Add resolved roles to subjects
-        subjects.AddRange(resolvedRoles);
 
         _logger.LogInformation("Final subjects for policy query: [{Subjects}]", string.Join(", ", subjects));
 
@@ -727,5 +712,60 @@ public class ScenarioTestingService(
         public string Action { get; set; } = string.Empty;
         public string? MockEntityJson { get; set; }
         public string ExpectedResult { get; set; } = "Allow"; // "Allow" or "Deny"
+    }
+
+    /// <summary>
+    /// Resolves all roles for the user's groups from Casbin policies.
+    /// Includes both direct and inherited roles.
+    /// </summary>
+    private async Task<List<string>> ResolveRolesFromGroupsAsync(List<string> groupIds, string workstreamId)
+    {
+        if (groupIds.Count == 0)
+            return [];
+
+        var allRoles = new List<string>();
+        var visited = new HashSet<string>();
+
+        // Resolve roles for each group recursively
+        foreach (var groupId in groupIds)
+        {
+            await ResolveRolesRecursivelyAsync(groupId, workstreamId, allRoles, visited);
+        }
+
+        // Return distinct roles
+        return allRoles.Distinct().ToList();
+    }
+
+    /// <summary>
+    /// Recursively resolves all roles for a subject (group or role), including inherited roles.
+    /// </summary>
+    private async Task ResolveRolesRecursivelyAsync(
+        string subject,
+        string workstreamId,
+        List<string> allRoles,
+        HashSet<string> visited)
+    {
+        // Prevent infinite loops in case of circular role dependencies
+        if (!visited.Add(subject))
+            return;
+
+        // Get direct roles from policies (fetch 'g' policies where V0=subject and V2=workstream)
+        var policies = await _policyRepository.GetRolesForSubjectsAsync(new[] { subject }, workstreamId);
+
+        foreach (var policy in policies)
+        {
+            var role = policy.V1; // V1 contains the role name in 'g' policies
+            if (string.IsNullOrWhiteSpace(role))
+                continue;
+
+            // Add the role if not already present
+            if (!allRoles.Contains(role))
+            {
+                allRoles.Add(role);
+
+                // Recursively resolve inherited roles (role-to-role inheritance)
+                await ResolveRolesRecursivelyAsync(role, workstreamId, allRoles, visited);
+            }
+        }
     }
 }

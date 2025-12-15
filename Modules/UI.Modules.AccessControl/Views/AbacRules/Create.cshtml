@@ -24,6 +24,9 @@
         <form asp-action="Create" method="post">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
+            @* Hidden input for WorkstreamId *@
+            <input type="hidden" asp-for="WorkstreamId" value="@ViewBag.SelectedWorkstream" />
+
             <div class="card">
                 <div class="card-header">
                     <h4>Rule Information</h4>
@@ -40,12 +43,11 @@
                         <label asp-for="RuleType" class="control-label"></label>
                         <select asp-for="RuleType" class="form-control" id="RuleType">
                             <option value="">-- Select Rule Type --</option>
+                            <option value="AttributeValue">Attribute Value</option>
                             <option value="AttributeComparison">Attribute Comparison</option>
                             <option value="PropertyMatch">Property Match</option>
                             <option value="ValueRange">Value Range</option>
                             <option value="TimeRestriction">Time Restriction</option>
-                            <option value="LocationRestriction">Location Restriction</option>
-                            <option value="AttributeValue">Attribute Value</option>
                         </select>
                         <span asp-validation-for="RuleType" class="text-danger"></span>
                         <small class="form-text text-muted">The type of authorization rule to apply</small>
@@ -142,14 +144,6 @@
     "end": "17:00"
   },
   "allowedDays": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-}
-                </pre>
-
-                <h6>Location Restriction</h6>
-                <pre class="bg-light p-2 border rounded">
-{
-  "allowedRegions": ["US", "CA", "EU"],
-  "allowedCountries": ["United States", "Canada", "Germany"]
 }
                 </pre>
 

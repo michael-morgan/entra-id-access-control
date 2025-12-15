@@ -50,21 +50,28 @@ public record AbacEvaluationResult
     public string? Message { get; init; }
 
     /// <summary>
+    /// Diagnostic information about the evaluation (for troubleshooting failures).
+    /// </summary>
+    public AbacEvaluationDiagnostics? Diagnostics { get; init; }
+
+    /// <summary>
     /// Creates an allowed result.
     /// </summary>
-    public static AbacEvaluationResult Allow(string? reason = null) => new()
+    public static AbacEvaluationResult Allow(string? reason = null, AbacEvaluationDiagnostics? diagnostics = null) => new()
     {
         Allowed = true,
-        Reason = reason
+        Reason = reason,
+        Diagnostics = diagnostics
     };
 
     /// <summary>
     /// Creates a denied result.
     /// </summary>
-    public static AbacEvaluationResult Deny(string reason, string? message = null) => new()
+    public static AbacEvaluationResult Deny(string reason, string? message = null, AbacEvaluationDiagnostics? diagnostics = null) => new()
     {
         Allowed = false,
         Reason = reason,
-        Message = message
+        Message = message,
+        Diagnostics = diagnostics
     };
 }

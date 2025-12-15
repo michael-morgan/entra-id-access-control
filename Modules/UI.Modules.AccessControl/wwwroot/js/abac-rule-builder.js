@@ -7,7 +7,7 @@ class AbacRuleBuilder {
         this.ruleTypeSelect = document.getElementById(ruleTypeSelectId);
         this.configTextarea = document.getElementById(configTextareaId);
         this.formContainer = document.getElementById(formContainerId);
-        this.attributeSchemas = { user: [], group: [], role: [] };
+        this.attributeSchemas = { user: [], group: [], role: [], resource: [] };
         this.currentConfig = {};
 
         // Note: init() must be called explicitly after construction to properly await schema loading
@@ -18,7 +18,8 @@ class AbacRuleBuilder {
         await Promise.all([
             this.loadAttributeSchemas('User'),
             this.loadAttributeSchemas('Group'),
-            this.loadAttributeSchemas('Role')
+            this.loadAttributeSchemas('Role'),
+            this.loadAttributeSchemas('Resource')
         ]);
 
         // Set up event listeners
@@ -75,9 +76,6 @@ class AbacRuleBuilder {
                 break;
             case 'TimeRestriction':
                 this.renderTimeRestrictionForm();
-                break;
-            case 'LocationRestriction':
-                this.renderLocationRestrictionForm();
                 break;
             case 'AttributeValue':
                 this.renderAttributeValueForm();
@@ -433,45 +431,6 @@ class AbacRuleBuilder {
         timezone.addEventListener('change', () => this.updateConfiguration());
     }
 
-    renderLocationRestrictionForm() {
-        const html = `
-            <div class="card">
-                <div class="card-header">
-                    <h6 class="mb-0">Location Restriction Configuration</h6>
-                </div>
-                <div class="card-body">
-                    <p class="text-muted">Restrict access based on geographic location</p>
-
-                    <div class="form-group mb-3">
-                        <label class="form-label">Allowed Regions (comma-separated)</label>
-                        <input type="text" class="form-control" id="allowedRegions"
-                               placeholder="e.g., US, CA, EU" />
-                        <small class="form-text text-muted">Region codes allowed to access</small>
-                    </div>
-
-                    <div class="form-group mb-3">
-                        <label class="form-label">Allowed Countries (comma-separated)</label>
-                        <input type="text" class="form-control" id="allowedCountries"
-                               placeholder="e.g., United States, Canada, Germany" />
-                        <small class="form-text text-muted">Country names allowed to access</small>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        this.formContainer.innerHTML = html;
-        this.attachLocationRestrictionListeners();
-        this.populateFormFromConfig();
-    }
-
-    attachLocationRestrictionListeners() {
-        const regionsInput = document.getElementById('allowedRegions');
-        const countriesInput = document.getElementById('allowedCountries');
-
-        regionsInput.addEventListener('input', () => this.updateConfiguration());
-        countriesInput.addEventListener('input', () => this.updateConfiguration());
-    }
-
     renderAttributeValueForm() {
         const html = `
             <div class="card">
@@ -479,23 +438,30 @@ class AbacRuleBuilder {
                     <h6 class="mb-0">Attribute Value Configuration</h6>
                 </div>
                 <div class="card-body">
-                    <p class="text-muted">Check an attribute value directly</p>
+                    <p class="text-muted">Check if an attribute value matches expected value(s)</p>
 
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label class="form-label">Attribute Level</label>
-                            <select class="form-control" id="attrLevel">
+                            <select class="form-control" id="attrLevel" required>
                                 <option value="">-- Select Level --</option>
-                                <option value="user">User Attribute</option>
                                 <option value="group">Group Attribute</option>
+                                <option value="user">User Attribute</option>
                                 <option value="role">Role Attribute</option>
+                                <option value="resource">Resource Attribute</option>
                             </select>
+                            <small class="form-text text-muted">
+                                Group/User/Role attributes from database, or Resource properties from entity data
+                            </small>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Attribute Name</label>
-                            <select class="form-control" id="attrName" disabled>
+                            <select class="form-control" id="attrName" disabled required>
                                 <option value="">-- Select level first --</option>
                             </select>
+                            <small class="form-text text-muted">
+                                Select from attributes defined in Attribute Schemas
+                            </small>
                         </div>
                     </div>
 
@@ -507,6 +473,8 @@ class AbacRuleBuilder {
                             <option value="greaterThan">Greater Than</option>
                             <option value="lessThan">Less Than</option>
                             <option value="contains">Contains</option>
+                            <option value="in">In List</option>
+                            <option value="notIn">Not In List</option>
                             <option value="exists">Exists (has value)</option>
                         </select>
                     </div>
@@ -536,7 +504,7 @@ class AbacRuleBuilder {
             attrSelect.disabled = !level;
 
             if (level) {
-                const schemas = this.attributeSchemas[level];
+                const schemas = this.attributeSchemas[level] || [];
                 attrSelect.innerHTML = '<option value="">-- Select attribute --</option>' +
                     schemas.map(s => `<option value="${s.attributeName}" data-type="${s.dataType}" data-allowed-values='${JSON.stringify(s.allowedValues || [])}'>${s.attributeDisplayName}</option>`).join('');
             } else {
@@ -551,10 +519,13 @@ class AbacRuleBuilder {
             this.updateAttributeValueInput();
             this.updateConfiguration();
         });
+
         operatorSelect.addEventListener('change', () => {
-            // Hide value input for "exists" operator
+            // Hide value input for "exists" operator, update for "in"/"notIn"
             const valueContainer = document.getElementById('attrValueContainer');
             valueContainer.style.display = operatorSelect.value === 'exists' ? 'none' : 'block';
+            // Re-render value input when operator changes to/from in/notIn
+            this.updateAttributeValueInput();
             this.updateConfiguration();
         });
 
@@ -571,12 +542,15 @@ class AbacRuleBuilder {
 
     updateAttributeValueInput() {
         const attrSelect = document.getElementById('attrName');
+        const operatorSelect = document.getElementById('attrOperator');
         const selectedOption = attrSelect.options[attrSelect.selectedIndex];
         const valueContainer = document.getElementById('attrValueContainer');
+        const operator = operatorSelect ? operatorSelect.value : '';
+        const isMultiValue = operator === 'in' || operator === 'notIn';
 
         if (!selectedOption || !selectedOption.value) {
             valueContainer.innerHTML = `
-                <label class="form-label">Expected Value</label>
+                <label class="form-label">Expected Value${isMultiValue ? 's' : ''}</label>
                 <input type="text" class="form-control" id="attrValue"
                        placeholder="e.g., true, 1000, Admin" />
             `;
@@ -593,19 +567,31 @@ class AbacRuleBuilder {
                 return `<option value="${val}">${displayValue}</option>`;
             }).join('');
 
-            valueContainer.innerHTML = `
-                <label class="form-label">Expected Value</label>
-                <select class="form-control" id="attrValueSelect">
-                    <option value="">-- Select value --</option>
-                    ${options}
-                </select>
-                <small class="form-text text-muted">Valid values for this attribute</small>
-            `;
+            if (isMultiValue) {
+                // Multi-select for "in" and "notIn" operators
+                valueContainer.innerHTML = `
+                    <label class="form-label">Expected Values (select multiple)</label>
+                    <select class="form-control" id="attrValueSelect" multiple size="5">
+                        ${options}
+                    </select>
+                    <small class="form-text text-muted">Hold Ctrl/Cmd to select multiple values</small>
+                `;
+            } else {
+                // Single select for other operators
+                valueContainer.innerHTML = `
+                    <label class="form-label">Expected Value</label>
+                    <select class="form-control" id="attrValueSelect">
+                        <option value="">-- Select value --</option>
+                        ${options}
+                    </select>
+                    <small class="form-text text-muted">Valid values for this attribute</small>
+                `;
+            }
 
             // Attach event listener to new dropdown
             document.getElementById('attrValueSelect').addEventListener('change', () => this.updateConfiguration());
         } else if (dataType === 'Boolean') {
-            // Boolean dropdown
+            // Boolean dropdown (doesn't make sense for multi-value)
             valueContainer.innerHTML = `
                 <label class="form-label">Expected Value</label>
                 <select class="form-control" id="attrValueSelect">
@@ -619,15 +605,27 @@ class AbacRuleBuilder {
             document.getElementById('attrValueSelect').addEventListener('change', () => this.updateConfiguration());
         } else {
             // Free-text input for other types
-            const placeholder = dataType === 'Number' ? 'e.g., 1000' :
-                               dataType === 'String' ? 'e.g., Admin' :
-                               'e.g., true, 1000, Admin';
+            if (isMultiValue) {
+                const placeholder = dataType === 'Number' ? 'e.g., 1,2,3' :
+                                   dataType === 'String' ? 'e.g., Admin,Manager,User' :
+                                   'e.g., value1,value2,value3';
+                valueContainer.innerHTML = `
+                    <label class="form-label">Expected Values</label>
+                    <input type="text" class="form-control" id="attrValue"
+                           placeholder="${placeholder}" />
+                    <small class="form-text text-muted">Enter comma-separated values</small>
+                `;
+            } else {
+                const placeholder = dataType === 'Number' ? 'e.g., 1000' :
+                                   dataType === 'String' ? 'e.g., Admin' :
+                                   'e.g., true, 1000, Admin';
 
-            valueContainer.innerHTML = `
-                <label class="form-label">Expected Value</label>
-                <input type="text" class="form-control" id="attrValue"
-                       placeholder="${placeholder}" />
-            `;
+                valueContainer.innerHTML = `
+                    <label class="form-label">Expected Value</label>
+                    <input type="text" class="form-control" id="attrValue"
+                           placeholder="${placeholder}" />
+                `;
+            }
 
             // Attach event listener to new input
             document.getElementById('attrValue').addEventListener('input', () => this.updateConfiguration());
@@ -650,9 +648,6 @@ class AbacRuleBuilder {
                 break;
             case 'TimeRestriction':
                 config = this.buildTimeRestrictionConfig();
-                break;
-            case 'LocationRestriction':
-                config = this.buildLocationRestrictionConfig();
                 break;
             case 'AttributeValue':
                 config = this.buildAttributeValueConfig();
@@ -735,28 +730,10 @@ class AbacRuleBuilder {
         };
     }
 
-    buildLocationRestrictionConfig() {
-        const regionsStr = document.getElementById('allowedRegions')?.value;
-        const countriesStr = document.getElementById('allowedCountries')?.value;
-
-        const regions = regionsStr ? regionsStr.split(',').map(r => r.trim()).filter(r => r) : [];
-        const countries = countriesStr ? countriesStr.split(',').map(c => c.trim()).filter(c => c) : [];
-
-        return {
-            allowedRegions: regions,
-            allowedCountries: countries
-        };
-    }
-
     buildAttributeValueConfig() {
         const level = document.getElementById('attrLevel')?.value;
         const attr = document.getElementById('attrName')?.value;
         const operator = document.getElementById('attrOperator')?.value;
-
-        // Check if using dropdown or text input
-        const valueSelect = document.getElementById('attrValueSelect');
-        const valueInput = document.getElementById('attrValue');
-        const value = valueSelect ? valueSelect.value : (valueInput ? valueInput.value : null);
 
         if (!level || !attr) return {};
 
@@ -765,18 +742,47 @@ class AbacRuleBuilder {
             operator: operator
         };
 
-        if (operator !== 'exists' && value) {
-            // Try to parse as number or boolean
-            if (value === 'true' || value === 'false') {
-                config.value = value === 'true';
-            } else if (!isNaN(value) && value !== '') {
-                config.value = parseFloat(value);
-            } else {
-                config.value = value;
+        // Handle multi-value operators (in, notIn)
+        if (operator === 'in' || operator === 'notIn') {
+            const valueSelect = document.getElementById('attrValueSelect');
+            const valueInput = document.getElementById('attrValue');
+
+            if (valueSelect && valueSelect.multiple) {
+                // Multi-select dropdown - get all selected options
+                const selectedOptions = Array.from(valueSelect.selectedOptions).map(opt => opt.value);
+                if (selectedOptions.length > 0) {
+                    config.values = selectedOptions.map(val => this.parseValue(val));
+                }
+            } else if (valueInput) {
+                // Comma-separated text input
+                const rawValues = valueInput.value.split(',').map(v => v.trim()).filter(v => v);
+                if (rawValues.length > 0) {
+                    config.values = rawValues.map(val => this.parseValue(val));
+                }
+            }
+        } else if (operator !== 'exists') {
+            // Single value operators
+            const valueSelect = document.getElementById('attrValueSelect');
+            const valueInput = document.getElementById('attrValue');
+            const value = valueSelect ? valueSelect.value : (valueInput ? valueInput.value : null);
+
+            if (value) {
+                config.value = this.parseValue(value);
             }
         }
 
         return config;
+    }
+
+    parseValue(value) {
+        // Try to parse as number or boolean
+        if (value === 'true' || value === 'false') {
+            return value === 'true';
+        } else if (!isNaN(value) && value !== '') {
+            return parseFloat(value);
+        } else {
+            return value;
+        }
     }
 
     populateFormFromConfig() {
@@ -796,9 +802,6 @@ class AbacRuleBuilder {
                 break;
             case 'TimeRestriction':
                 this.populateTimeRestrictionForm();
-                break;
-            case 'LocationRestriction':
-                this.populateLocationRestrictionForm();
                 break;
             case 'AttributeValue':
                 this.populateAttributeValueForm();
@@ -944,23 +947,16 @@ class AbacRuleBuilder {
         }, 150);
     }
 
-    populateLocationRestrictionForm() {
-        const config = this.currentConfig;
-        if (config.allowedRegions) {
-            document.getElementById('allowedRegions').value = config.allowedRegions.join(', ');
-        }
-        if (config.allowedCountries) {
-            document.getElementById('allowedCountries').value = config.allowedCountries.join(', ');
-        }
-
-        // Ensure the configuration textarea reflects the populated values
-        setTimeout(() => {
-            this.updateConfiguration();
-        }, 150);
-    }
-
     populateAttributeValueForm() {
         const config = this.currentConfig;
+
+        // Set operator first
+        if (config.operator) {
+            document.getElementById('attrOperator').value = config.operator;
+            if (config.operator === 'exists') {
+                document.getElementById('attrValueContainer').style.display = 'none';
+            }
+        }
 
         // Find which level has this attribute
         if (config.attribute) {
@@ -984,7 +980,24 @@ class AbacRuleBuilder {
 
                     // After the value input is created, populate it
                     setTimeout(() => {
-                        if (config.value !== undefined) {
+                        // Handle multi-value operators (in, notIn)
+                        if (config.values !== undefined && Array.isArray(config.values)) {
+                            const valueSelect = document.getElementById('attrValueSelect');
+                            const valueInput = document.getElementById('attrValue');
+
+                            if (valueSelect && valueSelect.multiple) {
+                                // Multi-select dropdown - select multiple options
+                                Array.from(valueSelect.options).forEach(option => {
+                                    option.selected = config.values.some(val =>
+                                        option.value == val || option.value === String(val)
+                                    );
+                                });
+                            } else if (valueInput) {
+                                // Comma-separated text input
+                                valueInput.value = config.values.join(', ');
+                            }
+                        } else if (config.value !== undefined) {
+                            // Single value operators
                             const valueSelect = document.getElementById('attrValueSelect');
                             const valueInput = document.getElementById('attrValue');
 
@@ -996,13 +1009,6 @@ class AbacRuleBuilder {
                         }
                     }, 100);
                 }, 100);
-            }
-        }
-
-        if (config.operator) {
-            document.getElementById('attrOperator').value = config.operator;
-            if (config.operator === 'exists') {
-                document.getElementById('attrValueContainer').style.display = 'none';
             }
         }
 

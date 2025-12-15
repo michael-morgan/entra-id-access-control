@@ -29,6 +29,17 @@ public class UserAttribute
     public required string WorkstreamId { get; set; }
 
     /// <summary>
+    /// Friendly name for the user (for display purposes).
+    /// </summary>
+    [StringLength(256)]
+    public string? UserName { get; set; }
+
+    /// <summary>
+    /// Whether this user's attributes are active.
+    /// </summary>
+    public bool IsActive { get; set; } = true;
+
+    /// <summary>
     /// All custom business attributes stored as JSON.
     /// Schema defined per workstream in AttributeSchemas table.
     /// These override group and role attributes (highest precedence).

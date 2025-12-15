@@ -19,9 +19,11 @@ namespace UI.Modules.AccessControl.Controllers.Attributes;
 /// </summary>
 public class UserAttributesController(
     IUserAttributeManagementService userAttributeManagementService,
+    IGraphUserService graphUserService,
     ILogger<UserAttributesController> logger) : Controller
 {
     private readonly IUserAttributeManagementService _userAttributeManagementService = userAttributeManagementService;
+    private readonly IGraphUserService _graphUserService = graphUserService;
     private readonly ILogger<UserAttributesController> _logger = logger;
 
     // GET: UserAttributes
@@ -55,14 +57,31 @@ public class UserAttributesController(
         var (userAttribute, userDisplayName) = result.Value;
         ViewBag.UserDisplayName = userDisplayName;
 
-        return View(userAttribute);
+        var viewModel = new UserAttributeViewModel
+        {
+            Id = userAttribute!.Id,
+            UserId = userAttribute.UserId,
+            WorkstreamId = userAttribute.WorkstreamId,
+            UserName = userAttribute.UserName,
+            IsActive = userAttribute.IsActive,
+            AttributesJson = userAttribute.AttributesJson,
+            CreatedAt = userAttribute.CreatedAt,
+            ModifiedAt = userAttribute.ModifiedAt
+        };
+
+        return View(viewModel);
     }
 
     // GET: UserAttributes/Create
-    public IActionResult Create()
+    public async Task<IActionResult> Create()
     {
         var selectedWorkstream = WorkstreamController.GetSelectedWorkstream(HttpContext);
         ViewBag.SelectedWorkstream = selectedWorkstream;
+
+        // Get all users for dropdown
+        var users = await _graphUserService.GetAllUsersAsync();
+        ViewBag.Users = users.Select(u => new { Id = u.Id, DisplayName = u.DisplayName ?? u.Id }).ToList();
+
         return View();
     }
 
@@ -82,6 +101,11 @@ public class UserAttributesController(
             {
                 ModelState.AddModelError(nameof(model.UserId), errorMessage!);
                 ViewBag.SelectedWorkstream = selectedWorkstream;
+
+                // Re-populate users dropdown on error
+                var users = await _graphUserService.GetAllUsersAsync();
+                ViewBag.Users = users.Select(u => new { Id = u.Id, DisplayName = u.DisplayName ?? u.Id }).ToList();
+
                 return View(model);
             }
 
@@ -92,7 +116,11 @@ public class UserAttributesController(
             return RedirectToAction(nameof(Index));
         }
 
+        // Re-populate users dropdown on validation error
         ViewBag.SelectedWorkstream = selectedWorkstream;
+        var users2 = await _graphUserService.GetAllUsersAsync();
+        ViewBag.Users = users2.Select(u => new { Id = u.Id, DisplayName = u.DisplayName ?? u.Id }).ToList();
+
         return View(model);
     }
 
@@ -117,6 +145,8 @@ public class UserAttributesController(
             Id = userAttribute!.Id,
             UserId = userAttribute.UserId,
             WorkstreamId = userAttribute.WorkstreamId,
+            UserName = userAttribute.UserName,
+            IsActive = userAttribute.IsActive,
             AttributesJson = userAttribute.AttributesJson
         };
 
@@ -176,7 +206,19 @@ public class UserAttributesController(
         var (userAttribute, userDisplayName) = result.Value;
         ViewBag.UserDisplayName = userDisplayName;
 
-        return View(userAttribute);
+        var viewModel = new UserAttributeViewModel
+        {
+            Id = userAttribute!.Id,
+            UserId = userAttribute.UserId,
+            WorkstreamId = userAttribute.WorkstreamId,
+            UserName = userAttribute.UserName,
+            IsActive = userAttribute.IsActive,
+            AttributesJson = userAttribute.AttributesJson,
+            CreatedAt = userAttribute.CreatedAt,
+            ModifiedAt = userAttribute.ModifiedAt
+        };
+
+        return View(viewModel);
     }
 
     // POST: UserAttributes/Delete/5
@@ -190,6 +232,10 @@ public class UserAttributesController(
         {
             _logger.LogWarning("Deleted user attributes for ID {Id}", id);
             TempData["SuccessMessage"] = "User attributes deleted successfully.";
+        }
+        else
+        {
+            TempData["ErrorMessage"] = "Failed to delete user attributes. The record may not exist.";
         }
 
         return RedirectToAction(nameof(Index));

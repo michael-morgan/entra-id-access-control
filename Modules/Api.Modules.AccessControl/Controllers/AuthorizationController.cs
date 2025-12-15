@@ -48,7 +48,7 @@ public class AuthorizationController(
         // Use workstream from request, header, or default
         var workstreamId = request.WorkstreamId
             ?? _correlationContextAccessor.Context?.WorkstreamId
-            ?? "platform";
+            ?? "global";
 
         var userId = _currentUserAccessor.User?.Id ?? "unknown";
 
@@ -62,11 +62,12 @@ public class AuthorizationController(
 
         try
         {
-            // Perform authorization check
+            // Perform authorization check - pass workstreamId explicitly
             var result = await _enforcer.CheckAsync(
                 request.Resource,
                 request.Action,
-                request.EntityData
+                request.EntityData,
+                workstreamId
             );
 
             var response = new AuthorizationCheckResponse
@@ -151,7 +152,8 @@ public class AuthorizationController(
                 var result = await _enforcer.CheckAsync(
                     check.Resource,
                     check.Action,
-                    resourceEntity: null // Batch checks typically don't include entity data
+                    resourceEntity: null, // Batch checks typically don't include entity data
+                    workstreamId: request.WorkstreamId
                 );
 
                 responses.Add(new AuthorizationCheckResponse

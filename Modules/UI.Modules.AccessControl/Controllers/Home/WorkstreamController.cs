@@ -40,6 +40,6 @@ public class WorkstreamController(ILogger<WorkstreamController> logger) : Contro
     /// </summary>
     public static string GetSelectedWorkstream(HttpContext httpContext)
     {
-        return httpContext.Session.GetString(WorkstreamSessionKey) ?? "platform";
+        return httpContext.Session.GetString(WorkstreamSessionKey) ?? "global";
     }
 }

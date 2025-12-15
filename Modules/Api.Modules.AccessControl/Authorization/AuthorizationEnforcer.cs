@@ -26,30 +26,34 @@ public class AuthorizationEnforcer(
     public async Task<AuthorizationResult> CheckAsync(
         string resource,
         string action,
-        object? resourceEntity = null)
+        object? resourceEntity = null,
+        string? workstreamId = null)
     {
         var user = _httpContextAccessor.HttpContext?.User
             ?? throw new InvalidOperationException("User context not available");
 
-        var workstreamId = _correlationContextAccessor.Context?.WorkstreamId
+        // Use provided workstream OR fall back to CorrelationContext
+        var resolvedWorkstreamId = workstreamId
+            ?? _correlationContextAccessor.Context?.WorkstreamId
             ?? throw new InvalidOperationException("Workstream context not available");
 
-        return await CheckInternalAsync(user, workstreamId, resource, action, resourceEntity);
+        return await CheckInternalAsync(user, resolvedWorkstreamId, resource, action, resourceEntity);
     }
 
-    public async Task<AuthorizationResult> CheckAsync<TEntity>(TEntity entity, string action)
+    public async Task<AuthorizationResult> CheckAsync<TEntity>(TEntity entity, string action, string? workstreamId = null)
         where TEntity : class
     {
         var resourceName = typeof(TEntity).Name;
-        return await CheckAsync(resourceName, action, entity);
+        return await CheckAsync(resourceName, action, entity, workstreamId);
     }
 
     public async Task EnsureAuthorizedAsync(
         string resource,
         string action,
-        object? resourceEntity = null)
+        object? resourceEntity = null,
+        string? workstreamId = null)
     {
-        var result = await CheckAsync(resource, action, resourceEntity);
+        var result = await CheckAsync(resource, action, resourceEntity, workstreamId);
 
         if (!result.IsAllowed)
         {
@@ -62,11 +66,11 @@ public class AuthorizationEnforcer(
         }
     }
 
-    public async Task EnsureAuthorizedAsync<TEntity>(TEntity entity, string action)
+    public async Task EnsureAuthorizedAsync<TEntity>(TEntity entity, string action, string? workstreamId = null)
         where TEntity : class
     {
         var resourceName = typeof(TEntity).Name;
-        await EnsureAuthorizedAsync(resourceName, action, entity);
+        await EnsureAuthorizedAsync(resourceName, action, entity, workstreamId);
     }
 
     private async Task<AuthorizationResult> CheckInternalAsync(
@@ -115,7 +119,7 @@ public class AuthorizationEnforcer(
             // Debug: Check if roles exist for the group
             foreach (var groupId in groupClaims)
             {
-                var rolesForGroup = _policyEngine.GetRolesForSubject(groupId, workstreamId);
+                var rolesForGroup = await _policyEngine.GetAllRolesForSubjectAsync(groupId, workstreamId);
                 _logger.LogDebug("Group {GroupId} has {RoleCount} roles in workstream {Workstream}",
                     groupId, rolesForGroup.Count(), workstreamId);
             }

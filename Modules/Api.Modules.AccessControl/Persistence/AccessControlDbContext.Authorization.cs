@@ -129,20 +129,17 @@ public partial class AccessControlDbContext
                 .HasDatabaseName("IX_GroupAttributes_Workstream");
         });
 
-        // RoleAttribute indexes - composite unique on AppRoleId + WorkstreamId
+        // RoleAttribute indexes - composite unique on RoleId + WorkstreamId
         modelBuilder.Entity<RoleAttribute>(entity =>
         {
             entity.ToTable("RoleAttributes", "auth");
 
-            entity.HasIndex(e => new { e.AppRoleId, e.WorkstreamId })
+            entity.HasIndex(e => new { e.RoleId, e.WorkstreamId })
                 .IsUnique()
-                .HasDatabaseName("IX_RoleAttributes_AppRoleId_Workstream");
+                .HasDatabaseName("IX_RoleAttributes_RoleId_Workstream");
 
             entity.HasIndex(e => e.WorkstreamId)
                 .HasDatabaseName("IX_RoleAttributes_Workstream");
-
-            entity.HasIndex(e => new { e.RoleValue, e.WorkstreamId })
-                .HasDatabaseName("IX_RoleAttributes_RoleValue_Workstream");
         });
 
         // AttributeSchema indexes - composite unique on WorkstreamId + AttributeLevel + AttributeName

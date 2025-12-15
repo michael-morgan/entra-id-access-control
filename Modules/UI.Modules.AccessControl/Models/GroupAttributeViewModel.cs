@@ -25,4 +25,10 @@ public class GroupAttributeViewModel
 
     [Display(Name = "Attributes (JSON)")]
     public string? AttributesJson { get; set; }
+
+    [Display(Name = "Created At")]
+    public DateTimeOffset? CreatedAt { get; set; }
+
+    [Display(Name = "Modified At")]
+    public DateTimeOffset? ModifiedAt { get; set; }
 }

@@ -57,6 +57,7 @@ public class AbacRuleGroupsController(
         var selectedWorkstream = WorkstreamController.GetSelectedWorkstream(HttpContext);
         await PopulateParentGroupsDropdown(selectedWorkstream);
         await PopulateResourcesDropdown(selectedWorkstream);
+        ViewBag.SelectedWorkstream = selectedWorkstream;
         return View();
     }
 
@@ -77,6 +78,7 @@ public class AbacRuleGroupsController(
                 ModelState.AddModelError(string.Empty, errorMessage!);
                 await PopulateParentGroupsDropdown(selectedWorkstream, model.ParentGroupId);
                 await PopulateResourcesDropdown(selectedWorkstream);
+                ViewBag.SelectedWorkstream = selectedWorkstream;
                 return View(model);
             }
 
@@ -89,6 +91,7 @@ public class AbacRuleGroupsController(
 
         await PopulateParentGroupsDropdown(selectedWorkstream, model.ParentGroupId);
         await PopulateResourcesDropdown(selectedWorkstream);
+        ViewBag.SelectedWorkstream = selectedWorkstream;
         return View(model);
     }
 

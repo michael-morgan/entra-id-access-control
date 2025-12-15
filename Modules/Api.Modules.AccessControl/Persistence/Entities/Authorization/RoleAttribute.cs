@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace Api.Modules.AccessControl.Persistence.Entities.Authorization;
 
 /// <summary>
-/// Attributes associated with Entra ID Roles for fine-grained ABAC.
+/// Attributes associated with Casbin Roles for fine-grained ABAC.
 /// Each role can have different attributes per workstream, stored as dynamic JSON.
 /// </summary>
 [Table("RoleAttributes", Schema = "auth")]
@@ -14,18 +14,12 @@ public class RoleAttribute
     public int Id { get; set; }
 
     /// <summary>
-    /// Entra ID App Role ID (unique identifier from app registration).
+    /// Role ID (RoleName from CasbinRoles table - unique identifier for the role).
+    /// Example: "Loans.Approver", "Platform.Admin"
     /// </summary>
     [Required]
     [StringLength(100)]
-    public required string AppRoleId { get; set; }
-
-    /// <summary>
-    /// Role value (e.g., "Approver.Senior", "Viewer.ReadOnly").
-    /// </summary>
-    [Required]
-    [StringLength(256)]
-    public required string RoleValue { get; set; }
+    public required string RoleId { get; set; }
 
     /// <summary>
     /// Workstream ID - isolates attributes per business domain.
@@ -36,13 +30,13 @@ public class RoleAttribute
     public required string WorkstreamId { get; set; }
 
     /// <summary>
-    /// Friendly display name for the role.
+    /// Friendly name for the role (for display purposes).
     /// </summary>
     [StringLength(256)]
-    public string? RoleDisplayName { get; set; }
+    public string? RoleName { get; set; }
 
     /// <summary>
-    /// Whether this role is active.
+    /// Whether this role's attributes are active.
     /// </summary>
     public bool IsActive { get; set; } = true;
 

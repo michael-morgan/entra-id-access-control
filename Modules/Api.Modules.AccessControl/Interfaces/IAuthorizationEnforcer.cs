@@ -14,14 +14,16 @@ public interface IAuthorizationEnforcer
     Task<AuthorizationResult> CheckAsync(
         string resource,
         string action,
-        object? resourceEntity = null);
+        object? resourceEntity = null,
+        string? workstreamId = null);
 
     /// <summary>
     /// Checks authorization for a specific entity.
     /// </summary>
     Task<AuthorizationResult> CheckAsync<TEntity>(
         TEntity entity,
-        string action) where TEntity : class;
+        string action,
+        string? workstreamId = null) where TEntity : class;
 
     /// <summary>
     /// Checks authorization and throws if denied.
@@ -29,12 +31,14 @@ public interface IAuthorizationEnforcer
     Task EnsureAuthorizedAsync(
         string resource,
         string action,
-        object? resourceEntity = null);
+        object? resourceEntity = null,
+        string? workstreamId = null);
 
     /// <summary>
     /// Checks authorization for entity and throws if denied.
     /// </summary>
     Task EnsureAuthorizedAsync<TEntity>(
         TEntity entity,
-        string action) where TEntity : class;
+        string action,
+        string? workstreamId = null) where TEntity : class;
 }

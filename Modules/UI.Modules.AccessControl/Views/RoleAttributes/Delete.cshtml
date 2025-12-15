@@ -1,4 +1,4 @@
-@model Api.Modules.AccessControl.Persistence.Entities.Authorization.RoleAttribute
+@model UI.Modules.AccessControl.Models.RoleAttributeViewModel
 
 @{
     ViewData["Title"] = "Delete Role Attributes";
@@ -6,23 +6,17 @@
 
 <h2>Delete Role Attributes</h2>
 
-<h3>Are you sure you want to delete these role attributes?</h3>
+<h3>Are you sure you want to delete role attributes for @Model.RoleId?</h3>
 <div class="alert alert-warning">
     <strong>Warning:</strong> This will permanently remove the role attributes. All users with this role will lose these ABAC attributes.
 </div>
 
 <div>
-    <h4>@Model.RoleDisplayName</h4>
+    <h4>@Model.RoleId</h4>
     <hr />
     <dl class="row">
-        <dt class="col-sm-3">App Role ID</dt>
-        <dd class="col-sm-9"><code>@Model.AppRoleId</code></dd>
-
-        <dt class="col-sm-3">Role Value</dt>
-        <dd class="col-sm-9"><code>@Model.RoleValue</code></dd>
-
-        <dt class="col-sm-3">Role Display Name</dt>
-        <dd class="col-sm-9">@Model.RoleDisplayName</dd>
+        <dt class="col-sm-3">Role ID</dt>
+        <dd class="col-sm-9"><code>@Model.RoleId</code></dd>
 
         <dt class="col-sm-3">Workstream ID</dt>
         <dd class="col-sm-9">

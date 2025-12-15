@@ -31,6 +31,9 @@ public class GenericAbacEvaluator(
         _logger.LogInformation("[GENERIC ABAC] Evaluating {Workstream} - {Resource}:{Action}",
             WorkstreamId, resource, action);
 
+        // Initialize diagnostics
+        var diagnostics = new AbacEvaluationDiagnostics();
+
         // Load all rule groups for this workstream, then filter by resource/action pattern matching
         // We need to do pattern matching in memory because SQL doesn't support wildcard matching in WHERE clause
         var allRuleGroups = await _context.AbacRuleGroups
@@ -50,11 +53,29 @@ public class GenericAbacEvaluator(
         _logger.LogInformation("[GENERIC ABAC] Found {Count} rule groups for {Workstream} - {Resource}:{Action}",
             ruleGroups.Count, WorkstreamId, resource, action);
 
+        // Build diagnostics: record matched rule groups
+        foreach (var group in ruleGroups)
+        {
+            diagnostics.MatchedRuleGroups.Add(new RuleGroupMatch
+            {
+                GroupName = group.GroupName,
+                Resource = group.Resource ?? "*",
+                Action = group.Action ?? "*",
+                RuleCount = group.Rules.Count
+            });
+        }
+
+        // Detect missing validations: check if required attributes are validated
+        await DetectMissingValidationsAsync(allRuleGroups, action, diagnostics, cancellationToken);
+
         if (ruleGroups.Count == 0)
         {
             _logger.LogInformation("[GENERIC ABAC] No rule groups found for {Workstream} - {Resource}:{Action}",
                 WorkstreamId, resource, action);
-            return null; // No declarative rules configured
+
+            // Return Allow with diagnostics to expose critical configuration gaps
+            // This allows RBAC to make the final decision while providing visibility into missing validation
+            return AbacEvaluationResult.Allow("No ABAC rules configured - relying on RBAC only", diagnostics);
         }
 
         // Evaluate top-level groups (those without parent)
@@ -62,17 +83,17 @@ public class GenericAbacEvaluator(
 
         foreach (var group in topLevelGroups)
         {
-            var result = await EvaluateRuleGroupAsync(group, context, resource, action, ruleGroups, cancellationToken);
+            var result = await EvaluateRuleGroupAsync(group, context, resource, action, ruleGroups, diagnostics, cancellationToken);
 
             if (result != null && !result.Allowed)
             {
-                // First denial wins
-                return result;
+                // First denial wins - include diagnostics
+                return AbacEvaluationResult.Deny(result.Reason ?? "Rule group denied access", result.Message, diagnostics);
             }
         }
 
         // All groups passed or returned null
-        return AbacEvaluationResult.Allow("All declarative rule groups passed");
+        return AbacEvaluationResult.Allow("All declarative rule groups passed", diagnostics);
     }
 
     private async Task<AbacEvaluationResult?> EvaluateRuleGroupAsync(
@@ -81,6 +102,7 @@ public class GenericAbacEvaluator(
         string resource,
         string action,
         List<AbacRuleGroup> allGroups,
+        AbacEvaluationDiagnostics diagnostics,
         CancellationToken cancellationToken)
     {
         _logger.LogDebug("Evaluating rule group: {GroupName} ({Operator})", group.GroupName, group.LogicalOperator);
@@ -94,6 +116,15 @@ public class GenericAbacEvaluator(
             if (ruleResult != null)
             {
                 results.Add(ruleResult);
+
+                // Record evaluated rule in diagnostics
+                diagnostics.EvaluatedRules.Add(new RuleEvaluation
+                {
+                    RuleName = rule.RuleName,
+                    RuleType = rule.RuleType,
+                    Passed = ruleResult.Allowed,
+                    Reason = ruleResult.Reason
+                });
             }
         }
 
@@ -101,7 +132,7 @@ public class GenericAbacEvaluator(
         var childGroups = allGroups.Where(g => g.ParentGroupId == group.Id).ToList();
         foreach (var childGroup in childGroups)
         {
-            var childResult = await EvaluateRuleGroupAsync(childGroup, context, resource, action, allGroups, cancellationToken);
+            var childResult = await EvaluateRuleGroupAsync(childGroup, context, resource, action, allGroups, diagnostics, cancellationToken);
             if (childResult != null)
             {
                 results.Add(childResult);
@@ -430,9 +461,37 @@ public class GenericAbacEvaluator(
     private AbacEvaluationResult? EvaluateAttributeValue(AbacRule rule, JsonDocument config, AbacContext context)
     {
         // Example: { "attribute": "Region", "operator": "==", "value": "US-EAST" }
-        var attribute = config.RootElement.GetProperty("attribute").GetString();
-        var op = config.RootElement.GetProperty("operator").GetString();
-        var expectedValue = config.RootElement.GetProperty("value");
+
+        // Validate required fields in configuration
+        if (!config.RootElement.TryGetProperty("attribute", out var attributeElement))
+        {
+            _logger.LogError("Rule '{RuleName}' (ID: {RuleId}) is missing 'attribute' field in configuration: {Config}",
+                rule.RuleName, rule.Id, config.RootElement.ToString());
+            return AbacEvaluationResult.Deny(
+                $"Rule '{rule.RuleName}' has invalid configuration: missing 'attribute' field",
+                rule.FailureMessage ?? "Invalid rule configuration");
+        }
+
+        if (!config.RootElement.TryGetProperty("operator", out var operatorElement))
+        {
+            _logger.LogError("Rule '{RuleName}' (ID: {RuleId}) is missing 'operator' field in configuration: {Config}",
+                rule.RuleName, rule.Id, config.RootElement.ToString());
+            return AbacEvaluationResult.Deny(
+                $"Rule '{rule.RuleName}' has invalid configuration: missing 'operator' field",
+                rule.FailureMessage ?? "Invalid rule configuration");
+        }
+
+        var attribute = attributeElement.GetString();
+        var op = operatorElement.GetString();
+
+        if (string.IsNullOrEmpty(attribute) || string.IsNullOrEmpty(op))
+        {
+            _logger.LogError("Rule '{RuleName}' (ID: {RuleId}) has null/empty attribute or operator in configuration",
+                rule.RuleName, rule.Id);
+            return AbacEvaluationResult.Deny(
+                $"Rule '{rule.RuleName}' has invalid configuration: attribute or operator is null/empty",
+                rule.FailureMessage ?? "Invalid rule configuration");
+        }
 
         var actualValue = GetContextValue(context, attribute);
 
@@ -440,6 +499,32 @@ public class GenericAbacEvaluator(
         {
             return null;
         }
+
+        // Check if using array-based operators (in, notIn)
+        if (op == "in" || op == "notIn")
+        {
+            if (!config.RootElement.TryGetProperty("values", out var valuesElement) ||
+                valuesElement.ValueKind != JsonValueKind.Array)
+            {
+                return AbacEvaluationResult.Deny(
+                    $"Rule '{rule.RuleName}' failed: operator '{op}' requires 'values' array in configuration",
+                    rule.FailureMessage ?? $"Invalid rule configuration");
+            }
+
+            var result = CompareValues(actualValue, op!, valuesElement);
+
+            if (!result)
+            {
+                return AbacEvaluationResult.Deny(
+                    $"Rule '{rule.RuleName}' failed: {attribute} ({actualValue}) {op} allowed values",
+                    rule.FailureMessage ?? $"Attribute check failed: {attribute}");
+            }
+
+            return AbacEvaluationResult.Allow($"Rule '{rule.RuleName}' passed");
+        }
+
+        // Single value comparison (existing logic)
+        var expectedValue = config.RootElement.GetProperty("value");
 
         var expected = expectedValue.ValueKind switch
         {
@@ -450,9 +535,9 @@ public class GenericAbacEvaluator(
             _ => (object?)expectedValue.ToString()
         };
 
-        var result = CompareValues(actualValue, op!, expected!);
+        var singleResult = CompareValues(actualValue, op!, expected!);
 
-        if (!result)
+        if (!singleResult)
         {
             return AbacEvaluationResult.Deny(
                 $"Rule '{rule.RuleName}' failed: {attribute} ({actualValue}) {op} expected ({expected})",
@@ -509,6 +594,26 @@ public class GenericAbacEvaluator(
 
     private bool CompareValues(object left, string op, object right)
     {
+        // Handle array-based operators (in, notIn)
+        if (op == "in" || op == "notIn")
+        {
+            if (right is JsonElement jsonArray && jsonArray.ValueKind == JsonValueKind.Array)
+            {
+                var found = false;
+                foreach (var item in jsonArray.EnumerateArray())
+                {
+                    // Use existing comparison logic for each array item
+                    if (CompareValues(left, "==", item))
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+                return op == "in" ? found : !found;
+            }
+            return false;
+        }
+
         // Unwrap JsonElement values if present
         left = UnwrapJsonElement(left) ?? left;
         right = UnwrapJsonElement(right) ?? right;
@@ -588,8 +693,35 @@ public class GenericAbacEvaluator(
     private static bool ResourceMatches(string resource, string pattern)
     {
         // Exact match
-        if (resource == pattern)
+        if (resource.Equals(pattern, StringComparison.OrdinalIgnoreCase))
             return true;
+
+        // Parameterized route matching
+        if (pattern.Contains("/:"))
+        {
+            var patternParts = pattern.Split('/');
+            var resourceParts = resource.Split('/');
+
+            // Must have same number of segments
+            if (patternParts.Length != resourceParts.Length)
+                return false;
+
+            for (int i = 0; i < patternParts.Length; i++)
+            {
+                var patternPart = patternParts[i];
+                var resourcePart = resourceParts[i];
+
+                // If pattern part is a parameter (starts with :), it matches any value
+                if (patternPart.StartsWith(':'))
+                    continue;
+
+                // Otherwise, must be exact match (case-insensitive)
+                if (!patternPart.Equals(resourcePart, StringComparison.OrdinalIgnoreCase))
+                    return false;
+            }
+
+            return true;
+        }
 
         // Wildcard pattern matching
         // "Loan/*" matches "Loan/123", "Loan/abc", etc.
@@ -606,5 +738,138 @@ public class GenericAbacEvaluator(
             return true;
 
         return false;
+    }
+
+    /// <summary>
+    /// Detects missing validations by analyzing rule configurations against attribute schemas.
+    /// Uses database-driven configuration analysis instead of name-based heuristics.
+    /// </summary>
+    private async Task DetectMissingValidationsAsync(
+        List<AbacRuleGroup> allRuleGroups,
+        string currentAction,
+        AbacEvaluationDiagnostics diagnostics,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("[CONFIG DETECTION] Analyzing validation coverage for action '{Action}' in workstream '{Workstream}'",
+            currentAction, WorkstreamId);
+
+        // 1. Load attribute schemas for this workstream to know what SHOULD be validated
+        var schemas = await _context.AttributeSchemas
+            .Where(s => (s.WorkstreamId == WorkstreamId || s.WorkstreamId == "global") &&
+                       s.AttributeLevel == "User" &&
+                       s.IsActive)
+            .ToListAsync(cancellationToken);
+
+        _logger.LogInformation("[CONFIG DETECTION] Found {Count} user attribute schemas", schemas.Count);
+
+        // 2. Get rule group for current action
+        var actionGroup = allRuleGroups
+            .FirstOrDefault(g => g.Action?.Equals(currentAction, StringComparison.OrdinalIgnoreCase) == true);
+
+        if (actionGroup == null)
+        {
+            _logger.LogWarning("[CONFIG DETECTION] No ABAC rule group found for action '{Action}' - CRITICAL GAP", currentAction);
+
+            // CRITICAL: Action has RBAC permission but NO ABAC validation at all
+            // This means the action can be performed with zero attribute checks
+
+            // Get all required schemas to show what SHOULD be validated
+            foreach (var schema in schemas.Where(s => s.IsRequired))
+            {
+                var missing = new MissingValidation
+                {
+                    AttributeName = schema.AttributeName,
+                    AttributeSource = "User",
+                    Reason = $"No ABAC rule group exists for '{currentAction}' action - zero validation!",
+                    Severity = "Critical",
+                    RecommendedRuleType = DetermineRecommendedRuleType(schema),
+                    ExistsInActions = [] // Can't cross-reference if no group exists
+                };
+
+                diagnostics.MissingValidations.Add(missing);
+            }
+
+            // Add high-level suggestion
+            diagnostics.Suggestions.Add(
+                $"CRITICAL: No ABAC rule group configured for action '{currentAction}'. " +
+                $"This action has RBAC permissions but ZERO attribute validation. " +
+                $"Create an AbacRuleGroup for '{currentAction}' action with PropertyMatch rules for: {string.Join(", ", schemas.Where(s => s.IsRequired).Select(s => s.AttributeName))}."
+            );
+
+            return;
+        }
+
+        // 3. Extract validated attributes from current action's rules
+        var extractor = new RuleAttributeExtractor();
+        var validatedUserAttrs = extractor.ExtractUserAttributes(actionGroup.Rules);
+
+        _logger.LogInformation("[CONFIG DETECTION] Action '{Action}' validates user attributes: {Attributes}",
+            currentAction, string.Join(", ", validatedUserAttrs));
+
+        // 4. Build cross-reference: which attributes are validated in OTHER actions
+        var attributesByAction = allRuleGroups
+            .Where(g => !string.IsNullOrEmpty(g.Action) &&
+                       !g.Action.Equals(currentAction, StringComparison.OrdinalIgnoreCase))
+            .SelectMany(g => extractor.ExtractUserAttributes(g.Rules)
+                .Select(attr => new { Action = g.Action!, Attribute = attr }))
+            .GroupBy(x => x.Attribute, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(x => x.Action).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+                StringComparer.OrdinalIgnoreCase
+            );
+
+        // 5. Detect missing validations based on required schemas
+        foreach (var schema in schemas.Where(s => s.IsRequired))
+        {
+            if (!validatedUserAttrs.Contains(schema.AttributeName))
+            {
+                var existsIn = attributesByAction.TryGetValue(schema.AttributeName, out var actions)
+                    ? actions
+                    : new List<string>();
+
+                var missing = new MissingValidation
+                {
+                    AttributeName = schema.AttributeName,
+                    AttributeSource = "User",
+                    Reason = $"Required by attribute schema for {schema.WorkstreamId} workstream",
+                    Severity = "High",
+                    RecommendedRuleType = DetermineRecommendedRuleType(schema),
+                    ExistsInActions = existsIn
+                };
+
+                diagnostics.MissingValidations.Add(missing);
+
+                var suggestion = $"Required attribute '{schema.AttributeName}' is not validated for action '{currentAction}'.";
+                if (existsIn.Any())
+                {
+                    suggestion += $" This attribute IS validated in: {string.Join(", ", existsIn)}.";
+                }
+                suggestion += $" Consider adding a {missing.RecommendedRuleType} rule.";
+
+                diagnostics.Suggestions.Add(suggestion);
+
+                _logger.LogWarning("[CONFIG DETECTION] Missing validation: {Attribute} (required by schema)",
+                    schema.AttributeName);
+            }
+        }
+
+        _logger.LogInformation("[CONFIG DETECTION] Found {Count} missing validations for action '{Action}'",
+            diagnostics.MissingValidations.Count, currentAction);
+    }
+
+    /// <summary>
+    /// Determines the recommended rule type based on attribute schema.
+    /// </summary>
+    private static string DetermineRecommendedRuleType(AttributeSchema schema)
+    {
+        return schema.DataType switch
+        {
+            "Number" => "AttributeComparison",
+            "String" => "PropertyMatch",
+            "Boolean" => "AttributeValue",
+            "Date" => "AttributeComparison",
+            _ => "PropertyMatch"
+        };
     }
 }

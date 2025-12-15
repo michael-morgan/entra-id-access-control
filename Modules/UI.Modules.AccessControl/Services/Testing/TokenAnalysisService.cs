@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Text.Json;
+using Api.Modules.AccessControl.Interfaces;
 using Api.Modules.AccessControl.Persistence.Entities.Authorization;
 using Api.Modules.AccessControl.Persistence.Repositories;
 using Api.Modules.AccessControl.Persistence.Repositories.Authorization;
@@ -78,9 +79,11 @@ public class TokenAnalysisService(
             result.UserName = jwtToken.Claims.FirstOrDefault(c => c.Type == "name")?.Value;
             result.Email = jwtToken.Claims.FirstOrDefault(c => c.Type == "preferred_username" || c.Type == "email")?.Value;
 
-            // Extract groups and roles
+            // Extract groups from JWT
             result.Groups = [.. jwtToken.Claims.Where(c => c.Type == "groups").Select(c => c.Value)];
-            result.Roles = [.. jwtToken.Claims.Where(c => c.Type == "roles" || c.Type == "role").Select(c => c.Value)];
+
+            // Resolve roles from Casbin policies based on group memberships
+            result.Roles = await ResolveRolesFromGroupsAsync(result.Groups, workstreamId);
 
             // Resolve group friendly names from Graph API
             if (result.Groups.Count > 0)
@@ -164,9 +167,9 @@ public class TokenAnalysisService(
         if (result.Roles.Count == 0)
             return;
 
-        // Get all role attributes for the workstream and filter by role values
+        // Get all role attributes for the workstream and filter by role IDs
         var allRoleAttrs = await _roleAttributeRepository.SearchAsync(workstreamId);
-        var roleAttrs = allRoleAttrs.Where(ra => result.Roles.Contains(ra.RoleValue)).ToList();
+        var roleAttrs = allRoleAttrs.Where(ra => result.Roles.Contains(ra.RoleId)).ToList();
 
         foreach (var roleAttr in roleAttrs)
         {
@@ -185,15 +188,15 @@ public class TokenAnalysisService(
                             AttributeName = key,
                             Value = value?.ToString() ?? "",
                             Source = "Role",
-                            EntityId = roleAttr.RoleValue,
-                            EntityName = roleAttr.RoleValue // Role values are already human-readable
+                            EntityId = roleAttr.RoleId,
+                            EntityName = roleAttr.RoleName ?? roleAttr.RoleId
                         });
                     }
                 }
             }
             catch (JsonException ex)
             {
-                _logger.LogWarning(ex, "Failed to parse role attributes JSON for role {RoleValue}", roleAttr.RoleValue);
+                _logger.LogWarning(ex, "Failed to parse role attributes JSON for role {RoleId}", roleAttr.RoleId);
             }
         }
     }
@@ -372,5 +375,60 @@ public class TokenAnalysisService(
     private string FormatAbacRuleDisplay(AbacRule rule)
     {
         return $"{rule.RuleName} ({rule.RuleType})";
+    }
+
+    /// <summary>
+    /// Resolves all roles for the user's groups from Casbin policies.
+    /// Includes both direct and inherited roles.
+    /// </summary>
+    private async Task<List<string>> ResolveRolesFromGroupsAsync(List<string> groupIds, string workstreamId)
+    {
+        if (groupIds.Count == 0)
+            return [];
+
+        var allRoles = new List<string>();
+        var visited = new HashSet<string>();
+
+        // Resolve roles for each group recursively
+        foreach (var groupId in groupIds)
+        {
+            await ResolveRolesRecursivelyAsync(groupId, workstreamId, allRoles, visited);
+        }
+
+        // Return distinct roles
+        return allRoles.Distinct().ToList();
+    }
+
+    /// <summary>
+    /// Recursively resolves all roles for a subject (group or role), including inherited roles.
+    /// </summary>
+    private async Task ResolveRolesRecursivelyAsync(
+        string subject,
+        string workstreamId,
+        List<string> allRoles,
+        HashSet<string> visited)
+    {
+        // Prevent infinite loops in case of circular role dependencies
+        if (!visited.Add(subject))
+            return;
+
+        // Get direct roles from policies (fetch 'g' policies where V0=subject and V2=workstream)
+        var policies = await _policyRepository.GetRolesForSubjectsAsync(new[] { subject }, workstreamId);
+
+        foreach (var policy in policies)
+        {
+            var role = policy.V1; // V1 contains the role name in 'g' policies
+            if (string.IsNullOrWhiteSpace(role))
+                continue;
+
+            // Add the role if not already present
+            if (!allRoles.Contains(role))
+            {
+                allRoles.Add(role);
+
+                // Recursively resolve inherited roles (role-to-role inheritance)
+                await ResolveRolesRecursivelyAsync(role, workstreamId, allRoles, visited);
+            }
+        }
     }
 }

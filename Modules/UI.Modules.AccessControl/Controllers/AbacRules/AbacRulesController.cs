@@ -101,6 +101,7 @@ public class AbacRulesController(
             {
                 _logger.LogInformation("Created ABAC rule {RuleName} ({RuleType}) in workstream {Workstream}",
                     createdRule!.RuleName, createdRule.RuleType, selectedWorkstream);
+                TempData["SuccessMessage"] = $"Successfully created ABAC rule '{createdRule.RuleName}'.";
                 return RedirectToAction(nameof(Index));
             }
 
@@ -187,6 +188,7 @@ public class AbacRulesController(
             {
                 _logger.LogInformation("Updated ABAC rule {RuleName} in workstream {Workstream}",
                     model.RuleName, model.WorkstreamId);
+                TempData["SuccessMessage"] = $"Successfully updated ABAC rule '{model.RuleName}'.";
                 return RedirectToAction(nameof(Index));
             }
 
@@ -230,7 +232,16 @@ public class AbacRulesController(
             if (success)
             {
                 _logger.LogWarning("Deleted ABAC rule {RuleName} ({RuleType})", rule.RuleName, rule.RuleType);
+                TempData["SuccessMessage"] = $"Successfully deleted ABAC rule '{rule.RuleName}'.";
             }
+            else
+            {
+                TempData["ErrorMessage"] = $"Failed to delete ABAC rule '{rule.RuleName}'.";
+            }
+        }
+        else
+        {
+            TempData["ErrorMessage"] = "ABAC rule not found.";
         }
 
         return RedirectToAction(nameof(Index));

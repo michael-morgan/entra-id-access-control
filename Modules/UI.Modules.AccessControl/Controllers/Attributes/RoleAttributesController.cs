@@ -2,16 +2,7 @@ using Api.Modules.AccessControl.Persistence.Entities.Authorization;
 using UI.Modules.AccessControl.Controllers.Home;
 using Microsoft.AspNetCore.Mvc;
 using UI.Modules.AccessControl.Models;
-using UI.Modules.AccessControl.Services;
-using UI.Modules.AccessControl.Services.Graph;
-using UI.Modules.AccessControl.Services.Testing;
 using UI.Modules.AccessControl.Services.Attributes;
-using UI.Modules.AccessControl.Services.Authorization.Policies;
-using UI.Modules.AccessControl.Services.Authorization.Roles;
-using UI.Modules.AccessControl.Services.Authorization.Resources;
-using UI.Modules.AccessControl.Services.Authorization.AbacRules;
-using UI.Modules.AccessControl.Services.Authorization.Users;
-using UI.Modules.AccessControl.Services.Audit;
 
 namespace UI.Modules.AccessControl.Controllers.Attributes;
 
@@ -51,14 +42,31 @@ public class RoleAttributesController(
             return NotFound();
         }
 
-        return View(roleAttribute);
+        var viewModel = new RoleAttributeViewModel
+        {
+            Id = roleAttribute.Id,
+            RoleId = roleAttribute.RoleId,
+            WorkstreamId = roleAttribute.WorkstreamId,
+            RoleName = roleAttribute.RoleName,
+            IsActive = roleAttribute.IsActive,
+            AttributesJson = roleAttribute.AttributesJson,
+            CreatedAt = roleAttribute.CreatedAt,
+            ModifiedAt = roleAttribute.ModifiedAt
+        };
+
+        return View(viewModel);
     }
 
     // GET: RoleAttributes/Create
-    public IActionResult Create()
+    public async Task<IActionResult> Create()
     {
         var selectedWorkstream = WorkstreamController.GetSelectedWorkstream(HttpContext);
         ViewBag.SelectedWorkstream = selectedWorkstream;
+
+        // Get all roles for dropdown
+        var roles = await _roleAttributeManagementService.GetRolesForWorkstreamAsync(selectedWorkstream);
+        ViewBag.Roles = roles.Select(r => new { Id = r.RoleName, DisplayName = r.DisplayName }).ToList();
+
         return View();
     }
 
@@ -73,10 +81,9 @@ public class RoleAttributesController(
         {
             var roleAttribute = new RoleAttribute
             {
-                AppRoleId = model.AppRoleId,
-                RoleValue = model.RoleValue,
+                RoleId = model.RoleId,
                 WorkstreamId = selectedWorkstream,
-                RoleDisplayName = model.RoleDisplayName,
+                RoleName = model.RoleName,
                 IsActive = model.IsActive,
                 AttributesJson = model.AttributesJson
             };
@@ -86,13 +93,19 @@ public class RoleAttributesController(
 
             if (success)
             {
-                _logger.LogInformation("Created role attributes for {AppRoleId} ({RoleValue}) in workstream {Workstream}",
-                    createdRoleAttribute!.AppRoleId, createdRoleAttribute.RoleValue, selectedWorkstream);
+                _logger.LogInformation("Created role attributes for {RoleId} in workstream {Workstream}",
+                    createdRoleAttribute!.RoleId, selectedWorkstream);
+                TempData["SuccessMessage"] = "Role attributes created successfully.";
                 return RedirectToAction(nameof(Index));
             }
 
-            ModelState.AddModelError("AppRoleId", errorMessage!);
+            ModelState.AddModelError("RoleId", errorMessage!);
         }
+
+        // Re-populate roles on error
+        var roles = await _roleAttributeManagementService.GetRolesForWorkstreamAsync(selectedWorkstream);
+        ViewBag.Roles = roles.Select(r => new { Id = r.RoleName, DisplayName = r.DisplayName }).ToList();
+        ViewBag.SelectedWorkstream = selectedWorkstream;
 
         return View(model);
     }
@@ -114,10 +127,8 @@ public class RoleAttributesController(
         var model = new RoleAttributeViewModel
         {
             Id = roleAttribute.Id,
-            AppRoleId = roleAttribute.AppRoleId,
-            RoleValue = roleAttribute.RoleValue,
+            RoleId = roleAttribute.RoleId,
             WorkstreamId = roleAttribute.WorkstreamId,
-            RoleDisplayName = roleAttribute.RoleDisplayName,
             IsActive = roleAttribute.IsActive,
             AttributesJson = roleAttribute.AttributesJson
         };
@@ -142,10 +153,8 @@ public class RoleAttributesController(
             var roleAttribute = new RoleAttribute
             {
                 Id = model.Id,
-                AppRoleId = model.AppRoleId,
-                RoleValue = model.RoleValue,
+                RoleId = model.RoleId,
                 WorkstreamId = model.WorkstreamId,
-                RoleDisplayName = model.RoleDisplayName,
                 IsActive = model.IsActive,
                 AttributesJson = model.AttributesJson
             };
@@ -154,8 +163,9 @@ public class RoleAttributesController(
 
             if (success)
             {
-                _logger.LogInformation("Updated role attributes for {AppRoleId} ({RoleValue}) in workstream {Workstream}",
-                    roleAttribute.AppRoleId, roleAttribute.RoleValue, roleAttribute.WorkstreamId);
+                _logger.LogInformation("Updated role attributes for {RoleId} in workstream {Workstream}",
+                    roleAttribute.RoleId, roleAttribute.WorkstreamId);
+                TempData["SuccessMessage"] = "Role attributes updated successfully.";
                 return RedirectToAction(nameof(Index));
             }
 
@@ -179,7 +189,19 @@ public class RoleAttributesController(
             return NotFound();
         }
 
-        return View(roleAttribute);
+        var viewModel = new RoleAttributeViewModel
+        {
+            Id = roleAttribute.Id,
+            RoleId = roleAttribute.RoleId,
+            WorkstreamId = roleAttribute.WorkstreamId,
+            RoleName = roleAttribute.RoleName,
+            IsActive = roleAttribute.IsActive,
+            AttributesJson = roleAttribute.AttributesJson,
+            CreatedAt = roleAttribute.CreatedAt,
+            ModifiedAt = roleAttribute.ModifiedAt
+        };
+
+        return View(viewModel);
     }
 
     // POST: RoleAttributes/Delete/5
@@ -193,9 +215,18 @@ public class RoleAttributesController(
             var success = await _roleAttributeManagementService.DeleteRoleAttributeAsync(id);
             if (success)
             {
-                _logger.LogWarning("Deleted role attributes for {AppRoleId} ({RoleValue})",
-                    roleAttribute.AppRoleId, roleAttribute.RoleValue);
+                _logger.LogWarning("Deleted role attributes for {RoleId}",
+                    roleAttribute.RoleId);
+                TempData["SuccessMessage"] = "Role attributes deleted successfully.";
             }
+            else
+            {
+                TempData["ErrorMessage"] = "Failed to delete role attributes. The record may not exist.";
+            }
+        }
+        else
+        {
+            TempData["ErrorMessage"] = "Role attribute not found.";
         }
 
         return RedirectToAction(nameof(Index));

@@ -436,7 +436,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
       scenarioCard.innerHTML = `
                 <div class="border p-3 rounded">
-                    <h6>${escapeHtml(scenario.name)}</h6>
+                    <h6>${escapeHtml(scenario.name)} <span class="scenario-status-badge"></span></h6>
                     <p class="small text-muted">${escapeHtml(
                       scenario.description
                     )}</p>
@@ -449,6 +449,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     )}">
                         Test ${escapeHtml(scenario.resource)}
                     </button>
+                    <div class="scenario-result-container mt-2"></div>
                 </div>
             `;
       scenariosContainer.appendChild(scenarioCard);
@@ -498,17 +499,29 @@ document.addEventListener("DOMContentLoaded", function () {
 
           const result = await response.json();
 
-          if (result.success) {
-            displayScenarioResult(result, newButton);
-          } else {
-            showError(result.errorMessage || "Scenario execution failed.");
-            newButton.disabled = false;
-            newButton.textContent = newButton.dataset.originalText || "Run";
-          }
+          // Always display result (whether success or failure)
+          displayScenarioResult(result, newButton);
         } catch (error) {
-          showError("Error running scenario: " + error.message);
+          // Show network/fetch errors in the scenario card
+          const scenarioCard = newButton.closest(".border");
+          const statusBadge = scenarioCard.querySelector(".scenario-status-badge");
+          const resultContainer = scenarioCard.querySelector(".scenario-result-container");
+
           newButton.disabled = false;
-          newButton.textContent = newButton.dataset.originalText || "Run";
+          newButton.textContent = newButton.dataset.originalText || "Test";
+
+          if (statusBadge) {
+            statusBadge.className = "scenario-status-badge badge ms-2 bg-danger";
+            statusBadge.textContent = "Error";
+          }
+
+          if (resultContainer) {
+            resultContainer.innerHTML = `
+              <div class="alert alert-danger mb-0">
+                <strong>Error:</strong> ${escapeHtml(error.message)}
+              </div>
+            `;
+          }
         }
       });
 
@@ -520,34 +533,87 @@ document.addEventListener("DOMContentLoaded", function () {
   function displayScenarioResult(result, button) {
     button.disabled = false;
 
-    // Update button text with pass/fail indicator
-    if (result.isAuthorized) {
-      button.textContent = "Passed";
-      button.classList.remove("btn-outline-danger");
-      button.classList.add("btn-outline-success");
-    } else {
-      button.textContent = "Failed";
-      button.classList.remove("btn-outline-success");
-      button.classList.add("btn-outline-danger");
+    // Find the scenario card and its components
+    const scenarioCard = button.closest(".border");
+    const statusBadge = scenarioCard.querySelector(".scenario-status-badge");
+    const resultContainer = scenarioCard.querySelector(".scenario-result-container");
+
+    // Update button text to allow re-running
+    button.textContent = button.dataset.originalText || "Test";
+    button.classList.remove("btn-outline-success", "btn-outline-danger");
+    button.classList.add("btn-outline-primary");
+
+    // Update status badge in scenario title
+    if (statusBadge) {
+      statusBadge.className = "scenario-status-badge badge ms-2";
+      if (result.success) {
+        statusBadge.classList.add("bg-success");
+        statusBadge.textContent = "Passed";
+      } else {
+        statusBadge.classList.add("bg-danger");
+        statusBadge.textContent = "Failed";
+      }
     }
 
-    // Display evaluation trace
-    displayEvaluationTrace(result.evaluationTrace);
+    // Display results in the scenario card
+    if (resultContainer) {
+      resultContainer.innerHTML = "";
 
-    // Show decision badge
-    const resultContainer = button.closest(".card-body");
-    const existingBadge = resultContainer.querySelector(
-      ".scenario-result-badge"
-    );
-    if (existingBadge) {
-      existingBadge.remove();
+      // Show test summary
+      const summaryDiv = document.createElement("div");
+      summaryDiv.className = result.success ? "alert alert-success mb-2" : "alert alert-danger mb-2";
+      summaryDiv.innerHTML = `
+        <strong>Test Results:</strong> ${result.passedTests} passed, ${result.failedTests} failed out of ${result.totalTests} total
+      `;
+      resultContainer.appendChild(summaryDiv);
+
+      // Show error message if test failed
+      if (!result.success && result.errorMessage) {
+        const errorDiv = document.createElement("div");
+        errorDiv.className = "alert alert-warning mb-2";
+        errorDiv.innerHTML = `<strong>Error:</strong> ${escapeHtml(result.errorMessage)}`;
+        resultContainer.appendChild(errorDiv);
+      }
+
+      // Show individual test results if available
+      if (result.testResults && result.testResults.length > 0) {
+        const testResultsDiv = document.createElement("div");
+        testResultsDiv.className = "small";
+
+        result.testResults.forEach((testResult, index) => {
+          const testDiv = document.createElement("div");
+          testDiv.className = testResult.success ? "text-success mb-1" : "text-danger mb-1";
+
+          let testHtml = `<strong>${index + 1}. ${escapeHtml(testResult.testDescription)}</strong>: `;
+
+          if (testResult.success) {
+            testHtml += `✓ ${testResult.decision}`;
+          } else {
+            testHtml += `✗ Test Failed`;
+
+            // Add diagnostic information for failed tests
+            if (testResult.errorMessage) {
+              testHtml += ` - ${escapeHtml(testResult.errorMessage)}`;
+            }
+
+            // Add detailed diagnostics if available
+            if (testResult.diagnosticMessage) {
+              testHtml += `<div class="mt-2 ms-3 small" style="white-space: pre-wrap; font-family: monospace; background-color: #f8f9fa; padding: 8px; border-left: 3px solid #dc3545;">${escapeHtml(testResult.diagnosticMessage)}</div>`;
+            }
+          }
+
+          testDiv.innerHTML = testHtml;
+          testResultsDiv.appendChild(testDiv);
+        });
+
+        resultContainer.appendChild(testResultsDiv);
+      }
     }
 
-    const badge = document.createElement("span");
-    badge.className = "badge ms-2 scenario-result-badge";
-    badge.classList.add(result.isAuthorized ? "bg-success" : "bg-danger");
-    badge.textContent = result.decision;
-    button.parentElement.appendChild(badge);
+    // Display evaluation trace in the main trace area (bottom of page)
+    if (result.evaluationTrace && result.evaluationTrace.length > 0) {
+      displayEvaluationTrace(result.evaluationTrace);
+    }
   }
 
   // Section 6: Custom Test Builder
